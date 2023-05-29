@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>spy.py web</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="top">
+        <span id="title">spy.py : web</span>
+        <div id="version">
+            <div>{{ spy_version }}</div>
+            <div>{{ glftpd_version }}</div>
+        </div>
+    </div>  
+    <div class="row">
+        <div id="menu" class="settings">
+            <table>
+                <thead>
+                    <tr>
+                        <th colspan="1">
+                            <span id="bolder">Settings</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <span class="theme-switch-wrapper">
+                                <label class="theme-switch" for="theme-checkbox">
+                                    <input type="checkbox" id="theme-checkbox"/>
+                                    <span class="slider round"></span>
+                                </label>
+                                dark mode
+                            </span>
+                        &nbsp;
+                        <button id="no_refresh" onclick="set_norefresh()">⛔</button> stop refresh
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <form style="display:inline">
+                                    <select id="sort_attr" name="sort_attr" >
+                                        <option value="" selected>sort by...</option>
+                                        <option>name</option>
+                                        <option>group</option>
+                                        <option>status</option>
+                                        <option>online</option>
+                                        <option>path</option>
+                                        <option>speed</option>
+                                    </select>
+                                    &nbsp;
+                                    <input id="sort_rev" type="checkbox" name="sort_rev" value="True"> 
+                                    <label for="sort_rev">reverse</label>
+                                    <input id="uniq_name" type="checkbox" name="uniq_attr" value="name">
+                                    <label for="uniq_name">unique</label>
+                                    &nbsp;
+                                    <button id="apply_filter" type="submit">apply</button>
+                            </form>
+                            &nbsp;
+                            <form style="display:inline">
+                                <input type="hidden" name="sort_attr" value=""/>
+                                <input type="hidden" name="sort_rev" value=""/>
+                                <input type="hidden" name="uniq_attr" value=""/>
+                                <button id="clear_attr" type="submit">clear</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span id="result">
+                                {% if sort_attr or uniq_attr -%}
+                                    filter: <span class="bold underline">on</span>
+                                    {%- if sort_attr %}
+                                        sort: "{{ sort_attr }}"
+                                        order: "{{ 'desc' if sort_rev else 'asc' }}"
+                                    {%- endif %}
+                                    {%- if uniq_attr -%}
+                                        unique: "{{ uniq_attr }}"
+                                    {%- endif -%}
+                                {% else -%}
+                                    filter: off
+                                {% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="include_totals" class="totals">
+            {% include 'totals.html' %}
+        </div>
+    </div>
+    <div id="response"></div>
+    <div id="who"> :: who is online :: </div>
+    <div id="include_users" class="users">
+        {% include 'users.html' %}
+    </div>
+<script type="text/javascript">
+    var timeout_id
+    const debug = false;
+    const div_users = document.getElementById("include_users");
+    const div_totals = document.getElementById("include_totals");
+    const div_response = document.getElementById("response");
+    const url_users = {{ url_for('webspy', route='users') | tojson }};
+    const url_totals = {{ url_for('webspy', route='totals') | tojson }};
+
+    /*
+    const attr_obj = {
+        'sort_attr': [
+            "s_name", "s_group", "s_status", "s_online", "s_path", "s_speed"
+         ],
+        'uniq_attr': [
+            "uniq_name"
+        ]
+    }
+    */
+   
+    /*
+    function set_btn_opacity() {
+        Object.keys(attr_obj).forEach(k => {
+            attr_obj[k].forEach(v => {
+                if (document.getElementById(v)) document.getElementById(v).style = "opacity:0.4";
+            });
+        });
+    }
+    */
+
+    function set_norefresh() {
+        clearTimeout(timeout_id)
+        document.getElementById('result').innerText = ('refresh: off (press F5 to re-enable)');
+    }
+
+    function api_call(endpoint, username) {
+        fetch(encodeURI(`/${endpoint}/${username}`), {
+                method: "GET",
+            })
+            .then(response => response.json())
+            .then(data => {
+                let text = `${username}\n\n`;
+                Object.keys(data).forEach(k => {
+                    //console.log(k)
+                    if (k) {
+                        text += `${k}: ${data[k]}\n`
+                    }
+                });
+                div_response.innerHTML = `<pre>${text}</pre>`
+            })
+        div_response.style = "display:block;"
+        setTimeout(() => {
+            div_response.style = "display:none;"
+        }, 8000);
+    }
+
+    function set_attr_style(spy_params) {
+        let el
+        let p
+        Object.keys(attr_obj).forEach(k => {
+            attr_obj[k].forEach(v => {
+                p = spy_params.get(k)
+                if (p != "") {
+                    el = document.getElementById(v) ? document.getElementById(v) : null
+                    if (el) {
+                        if (p == el.value) {
+                            el.style = "border-width:2px";
+                        } else {
+                            el.style = "opacity:0.4";
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    function check_sort_order(spy_params) {
+        let el = document.getElementById('sort_rev') ? document.getElementById('sort_rev') : null
+        let p = spy_params.get('sort_rev')
+        if (el && p == "") {
+            el.checked = false;
+        } else if (el && p == "True") {
+            el.checked = true;
+        }
+    }
+
+    let spy_params = new URLSearchParams(window.location.search);
+    /*
+    set_attr_style(spy_params);
+    if (spy_params.get('sort_attr') == '' && spy_params.get('sort_rev') == 'True') {
+        spy_params.set('sort_attr', 'name')
+    }
+    */
+    check_sort_order(spy_params);
+
+    (function loop() {
+        timeout_id = window.setTimeout(() => {
+            let spy_params = new URLSearchParams(window.location.search);
+            /*
+            set_attr_style(spy_params);
+            check_sort_order(spy_params);
+            if (!(spy_params.get('sort_attr')) && spy_params.get('sort_rev') == 'True') {
+                spy_params.set('sort_attr', 'name')
+            }
+            */
+            //console.log(spy_params)
+            fetch(encodeURI(`${url_users}?${spy_params}`), {
+                method: "GET",
+            })
+            .then(response => response.text())
+            .then(text => {
+                div_users.innerHTML = text  ;
+            })
+            fetch(encodeURI(url_totals), {
+                method: "GET",
+            })
+            .then(response => response.text())
+            .then(text => {
+                div_totals.innerHTML = text;
+            })
+            //totals_div.getElementsByClassName("curdate")[0].innerHTML = new Date().toISOString().replace(/[TZ]/g, ' ')
+            loop()
+        }, 1000);
+    })()
+
+    if (debug) console.log('interval_id after', interval_id)
+
+    // examples:
+    //  console.log(totals_div.getElementsByTagName("table")[0])
+    //  totals_div.getElementsByTagName("tbody")[0].insertAdjacentHTML("beforeend", `<tr><td>date/time</td><td></td></tr>`)
+    //  document.getElementById('sort_attr').value
+    //  if (spy_params.get('sort_rev') == "True")  document.getElementById('cb_rev').checked = true
+    //  const sort_attr = query(sort_attr)
+    //  fetch  method: "GET",
+    //          headers: { "Content-Type": "application/x-www-form-urlencoded" }
+
+    const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+
+    toggleSwitch.addEventListener('change', switchTheme, false);
+
+    function switchTheme(e) {
+        if (e.target.checked) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark'); //add this
+        }
+        else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light'); //add this
+        }    
+    }
+
+    const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
+
+    if (currentTheme) {
+        document.documentElement.setAttribute('data-theme', currentTheme);
+
+        if (currentTheme === 'dark') {
+            toggleSwitch.checked = true;
+        }
+    }
+
+</script>
+</body>
+</html>

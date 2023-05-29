@@ -1,0 +1,37 @@
+{% if users[0] -%}
+    <table>
+        <thead>
+            <tr>
+                <th colspan="2">
+                    Currently <span id="bold">{{ users[0].onlineusers }}</span> of {{ totalusers }} users online
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>up</td>
+                <td>{{ users[0].uploads }}@{{ '{0:0.2f}'.format(users[0].total_up_speed) }}{{ users[0].unit }}</td>
+            </tr>
+            <tr>
+                <td>down</td>
+                <td>{{ users[0].downloads }}@{{ '{0:0.2f}'.format(users[0].total_dn_speed) }}{{ users[0].unit }}</td>
+            </tr>
+            <tr>
+                <td>total</td>
+                <td>{{ users[0].total }}@{{ '{0:0.2f}'.format(users[0].total_speed) }}{{ users[0].unit }}</td>
+            </tr>
+            <tr>
+                <td>activity</td>
+                <td>
+                    {{ users[0].browsers }} browser(s), {{ users[0].idlers }} idler(s)
+                </td>
+            </tr>
+            <tr>
+                <td>{# date/time #}&nbsp;</td>
+                <td>
+                    <span class="curdate"></span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+{% endif %}
