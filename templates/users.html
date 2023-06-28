@@ -2,51 +2,53 @@
     {% if not uniq_attr -%}
         {% set uniq_attr=None -%}
     {% endif -%}
-    {% for u in users | sort(attribute=sort_attr, reverse=sort_rev) | unique(attribute=uniq_attr) -%}
-    <table>
-        <thead>
-            <tr>
-                <th colspan="2" {%- if u.mb_xfered -%}style="background-color:lightgray;"{%- endif -%}>
-                    <span id="bold"><a href="/user/{{ u.name }}">{{ u.name }}</a></span>/{{ u.group }}
-                    <span class="icons" id="right">
-                        <span id="index">{{ loop.index }}/{{ loop.length }}</span>
-                        <button onclick="api_call('user', '{{u.name}}')">🔍</button>
-                        <button onclick="api_call('kick', '{{u.name}}')">💀</button>
-                    </span>
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>host</td> 
-                <td>{{ u.get('host') }} {{ u.ip }}</td>
-            </tr>
-            <tr>
-                <td>tagline</td> 
-                <td>{{ u.get('tagline') }}</td>
-            </tr>
-            <tr>
-                <td>status</td>
-                <td>{{ u.status }} &nbsp; (online: {{ u.online }})</td>
-            </tr>
-            <tr>
-                <td>path</td> 
-                <td>{{ u.get('currentdir') }}</td>
-            </tr>
-            {% if u.speed %} 
-            <tr>
+    {% for u in users | sort(attribute=sort_attr, reverse=sort_rev) | unique(attribute=uniq_attr) %}
+        {% if not search or (search in u.name or search in u.group or search in u.host or search in u.get('host')) %}              
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2" {% if u.speed -%}style="background-color:lightgray;"{%- endif -%}>
+                        <span id="bold"><a href="/user/{{ u.name }}">{{ u.name }}</a></span>/{{ u.group }}
+                        <span class="icons">
+                            <span id="index">{{ loop.index }}/{{ loop.length }}</span>
+                            <button onclick="api_call('user', '{{u.name}}')"><img src="{{ url_for('static', filename='g15950.svg') }}"></button>
+                            <button onclick="api_call('kick', '{{u.name}}')"><img src="{{ url_for('static', filename='g1112.svg') }}"></button>
+                        </span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>host</td> 
+                    <td>{{ u.get('host') }} &nbsp; (ip: {{ u.ip }})</td>
+                </tr>
+                <tr>
+                    <td>tagline</td> 
+                    <td>"{{ u.get('tagline') }}"</td>
+                </tr>
+                <tr>
+                    <td>status</td>
+                    <td>{{ u.status }} &nbsp; Online: {{ u.online }}</td>
+                </tr>
+                <tr>
+                    <td>path</td> 
+                    <td>{{ u.get('currentdir') }} {% if u.filesize %}({{ '{:.0f}'.format(u.filesize/1024**2) }}GB){% endif %}</td>
+                </tr>
+                {% if u.speed %} 
+                <tr>
                     <td>transfer</td>
                     <td>
                         {% if u.mb_xfered %}
-                            {{ '{0:0.2f}'.format(u.mb_xfered) }}MiB of {{ u.filename }}
-                        {% elif u.pct >= 0 %}
-                            {{ '{0:3.0f}%'.format(u.pct) }} &nbsp;
-                            {{ '[{:_<15.15s}]'.format(u.p_bar) }}
+                            {{ '{:0.2f}'.format(u.mb_xfered) }}MiB of {{ u.filename }}
+                        {% else %}
+                            {{ '{:3.0f}%'.format(u.pct) }} &nbsp; 
+                            <progress value="{{ '{:3.0f}'.format(u.pct) }}" max="100"></progress>
                         {% endif %}
                     </td>
-            </tr>
-            {% endif %}
-        </tbody>
-    </table>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        {% endif %}
     {% endfor %}
 {% endif %}

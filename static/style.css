@@ -71,17 +71,11 @@ a:link, a:visited, a:hover, a:active {
     /* overflow-wrap: break-word; */
     max-width: 25%;
 }
-.row {
-    height: auto;
-    width: auto;
-    column-count: 2;
-    column-gap: 0%;
-    column-span: none;
-    margin-bottom: 10px;
-}
 .settings {
     width: auto;
     position: sticky;
+    float: left;
+    margin-right: 5%;
 }
 .settings table {
     width: max-content;
@@ -107,13 +101,16 @@ a:link, a:visited, a:hover, a:active {
 }
 .settings button {
     cursor: pointer;
-    padding: 3px;
+    padding-top: 3px;
+    padding-bottom: 3px;
     padding-left: 8px;
     padding-right: 8px;
-    height: 32px;
+    height: 26px;
     border-style: solid;
     border-width: 1px;
     border-radius: 6px;
+    border-color: darkgray;
+    box-shadow: 1px 1px 0px 1px lightgray;
 }
 .settings select {
     cursor: pointer;
@@ -121,35 +118,21 @@ a:link, a:visited, a:hover, a:active {
     padding: 3px;
     padding-left: 8px;
     padding-right: 8px;
-    height: 32px;
+    height: 28px;
     border-style: solid;
     border-width: 1px;
-    border-color: lightgray;
+    border-color: darkgray;
     border-radius: 6px;
 }
-.settings #result {
-    width: auto;
-    cursor: default;
-    color: black;
-    background-color: lightgray;
-    border-style: solid;
-    border-width: 2px;
-    border-color: darkgray;
-    /* border-radius: 6px;  */
-    padding-left: 8px;
-    padding-right: 8px;
-    padding-top: 2px;
-    padding-bottom: 2px;
-    margin-left: 0px;
-    white-space: nowrap;
-    font-weight: normal;
+.settings input {
+    height: 20px;
+    margin-bottom: 10px;
 }
-.icons button {
-    padding: 2px;
-    border-radius: 5px;
-    margin-left: 2px;
+.settings form {
+    display: inline;
 }
 .totals {
+    display: inline;
     width: auto;
 }
 .totals table {
@@ -163,15 +146,7 @@ a:link, a:visited, a:hover, a:active {
 .totals #date {
     margin-left: 100%;
 }
-.users {
-    column-count: 2;
-    column-gap: 0%;
-    column-span: none;
-}
-.users table {
-    margin-bottom: 15px;
-}
-#response {
+#api_result {
     display: none;
     color: white;
     font-size: 1em;
@@ -187,16 +162,91 @@ a:link, a:visited, a:hover, a:active {
     border-radius: 6px;
     border-color: gray;
 }
-#who {
-    width: auto;
-    color: gray;
-    font-size: 1.2em;
-    font-weight: bold;
-    margin-top: 20px;
-    margin-left: 10px;
-    padding-bottom: 10px;
+.who {
+    margin-top: 0px;
+    margin-bottom: 0px;
 }
-#index {
+.who #show_info {
+    display: inline-table;
+    float:  right;
+    width: auto;
+    /*
+    cursor: default;
+    color: black;
+    font-weight: normal;
+    font-size: 0.9em;
+    background-color: #e3e3e3;
+    border-style: solid;
+    border-width: 2px;
+    border-color: darkgray;
+    border-radius: 6px;
+    */
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    margin-left: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    white-space: nowrap;
+}
+.who #bartext {
+    display: table;
+    width: 100%;
+    /* color: black; */
+    /* font-weight: bold; */
+    /* font-size: 1.0em; */
+    font-weight: 600;
+    margin-top: 20px;
+    margin-left: 0px;
+    margin-right: 5px;
+    margin-bottom: 15px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-style: solid;
+    border-color: lightgray;
+    border-width: 0px;
+    border-bottom-width: 1px;
+    background-color:  #eaeaea;
+}
+.who img {
+    float: left;
+    margin-right: 5px;
+    height: 25px;
+}
+.row {
+    height: auto;
+    width: auto;
+    column-count: 1;
+    column-gap: 0%;
+    column-span: none;
+    margin-bottom: 10px;
+}
+.users {
+    column-count: 2;
+    column-gap: 0%;
+    column-span: none;
+}
+.users table {
+    margin-bottom: 15px;
+}
+.icons {
+    float: right;
+    padding-right: 10px;
+
+}
+.icons button {
+    height: 24px;
+    border-radius: 5px;
+    margin-left: 2px;
+}
+.icons img {
+    height: 16px;
+}
+.icons #index {
+    display: inline-block;
     cursor: default;
     color: gray;
     border-width: 1px;
@@ -211,10 +261,6 @@ a:link, a:visited, a:hover, a:active {
 }
 .underline {
     text-decoration: underline;
-}
-#right {
-    float: right;
-    padding-right: 10px;
 }
 #normal {
     font-weight: normal;
@@ -233,7 +279,8 @@ a:link, a:visited, a:hover, a:active {
 }
 */
 
-/* https://dev.to/ananyaneogi/create-a-dark-light-mode-switch-with-css-variables-34l8 */
+/*  dark theme 
+    https://dev.to/ananyaneogi/create-a-dark-light-mode-switch-with-css-variables-34l8 */
 
 :root {
     --text-color-normal: #0a244d;
@@ -272,7 +319,7 @@ a:link, a:visited, a:hover, a:active {
     background-color: navy;
 }
 [data-theme='dark'] th {
-    background-color: midnightblue;
+    background-color: rgb(33, 33, 153);
 }
 [data-theme='dark'] button {
     background-color: #818cab;
@@ -280,7 +327,10 @@ a:link, a:visited, a:hover, a:active {
     border-radius: 5px;
 }
 [data-theme='dark'] select {
-    /* color: whitesmoke; */
+    background-color: #818cab;
+    border-radius: 5px;
+}
+[data-theme='dark'] input {
     background-color: #818cab;
     border-radius: 5px;
 }
@@ -288,10 +338,15 @@ a:link, a:visited, a:hover, a:active {
     border-color: darkcyan;
     background-color: lightskyblue;
 }
-[data-theme='dark'] #result {
-    color: whitesmoke;
+[data-theme='dark'] .who #show_info {
+    color: black;
     border-color: whitesmoke;
     background-color: #818cab;
+}
+[data-theme='dark'] .who #bartext {
+    color: black;
+    border-color: darkgray;
+    background-color: gray;
 }
 /*
 [data-theme='dark'] label {
