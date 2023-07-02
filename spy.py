@@ -13,20 +13,7 @@
 ################################################################################
 """
 
-# TODO:
-#
-# - [X] replace custom args parsing with arg parse module
-# - [V] cli: move to built in 'theme'
-# - [X] cli: use libs (ncurses, kb events or 'textual' etc)
-# - [X] cli: rewrite func cli_input
-# - [V] cli: full screen (re)size, move global vars in cli main loop
-# - [V] cli: cut/pad all str vars to 80 chars (theme.columns)
-# - [X] cli: add popup prompts? e.g.  [ Search user: ____ ]
-# - [V] cli: add user search ('/' key) -- disabled
-# - [X] cli: add sort
-# - [ ] cli: limit flicker/blinking on refresh in user loop
-# - [V] cli: user selector up/down cursor keys select user
-
+# TODO: cli limit flicker/blinking on refresh in user loop
 
 #import string
 import struct
@@ -65,10 +52,13 @@ if _WITH_GEOIP:
 
 VERSION = "20230624"
 
-SCRIPT = os.path.basename(sys.argv[0])
 SCRIPT_PATH = os.path.abspath(__file__) if os.path.abspath(__file__) else os.path.realpath(sys.argv[0])
-SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
+# pyinstaller
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    SCRIPT_PATH = os.path.realpath(sys.argv[0])
+SCRIPT = os.path.basename(sys.argv[0])
 SCRIPT_NAME = os.path.splitext(SCRIPT)[0]
+SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
 TTY_SETTINGS = tty.tcgetattr(sys.stdin)
 
 UPLOADS = DOWNLOADS = 0
@@ -80,6 +70,7 @@ GEOIP2_CLIENT = None
 
 HTTPD_MODE = 0
 FLASK_MODE = 0
+CLI_SEARCH = 0  # search username in list. not that usefull, disabled by default
 
 SPY_VERSTR = f"spy-{VERSION}"
 if _WITH_GEOIP:
@@ -118,21 +109,28 @@ else:
 ##############
 
 CONFIGFILE = f'{SCRIPT_DIR}/{SCRIPT_NAME}.conf'
+CONFIG_FN = None
 config = configparser.ConfigParser()
 config_errors = []
-for config_file in set([f'{os.getcwd()}/spy.conf', CONFIGFILE, f'{SCRIPT_DIR}/spy.conf']):
+# f'{os.getcwd()}/spy.conf'
+for CONFIG_FN in set([CONFIGFILE, f'{SCRIPT_DIR}/spy.conf']):
     try:
-        with open(config_file, 'r', encoding='utf-8', errors='ignore') as config_obj:
-            config.read_string("[DEFAULT]\n" + config_obj.read())
-    except IOError as config_err:
+        os.path.isfile(CONFIG_FN)
+    except Exception as config_err:
         config_errors.append(config_err)
     else:
         break
+try:
+    with open(CONFIG_FN, 'r', encoding='utf-8', errors='ignore') as config_obj:
+        config.read_string("[DEFAULT]\n" + config_obj.read())
+except IOError as config_err:
+    config_errors.append(config_err)
+
 if len(config_errors) > 0:
     print('Error: opening config file')
     for config_err in config_errors:
         print(config_err)
-    sys.exit(1)
+        sys.exit(1)
 
 TLS_MODE = [
     'None',       # no ssl
@@ -169,6 +167,7 @@ CHIDDEN = 1 if count_hidden else 0
 MAXUSERS = maxusers if maxusers else 0
 THRESHOLD = threshold if threshold else 0
 IDLE_BARRIER = idle_barrier if idle_barrier else 0
+REFRESH = 1  # refresh rate, default is 0.5
 
 if _WITH_FLASK:
     FLASK_OPTIONS = {}
@@ -245,7 +244,7 @@ for gl_udir_name in [f"{glrootpath}/ftp-data/users", "/ftp-data/users"]:
         USERS_DIR=gl_udir_name
         break
 
-# set global var for totalusers, use spy cfg or glconf's maxusers
+# set global var for totalusers, use spy.cfg or glconf's maxusers
 glconf_max = 0
 for glconf_fn in [f'{glrootpath}/../glftpd.conf', f'{glrootpath}/glftpd.conf', '/etc/glftpd.conf']:
     try:
@@ -264,15 +263,17 @@ else:
 
 # removed:  Press '/' to search for username
 HELP_TEXT  = """
-  Up/Down keys scroll in users list
+  Main screen:
+    Up/Down keys scroll in user list, and PgUp/PgDn/Home/End
+    Shortcut keys '0-9' will jump to user list <num>
 
-  Press 'v', ENTER or Right to view detailed user info
-    Use 'n' and 'p' or Left/Right for next/previous login
-    Use 'k' to kick selected user *needs root*
-    ESC returns to main screen
+  User info:
+    Press 'v', ENTER or Right to view detailed user info
+      Use 'n' and 'p' or Left/Right for next/previous login
+      Use 'k' to kick selected user *needs root*
+      ESC returns to main screen
 
-  Shortcut keys '0-9' will jump to user login <num>
-  Press 'q' key to Quit"
+  Press 'q' key or CTRL-C to Quit
 
 """
 
@@ -594,20 +595,24 @@ def cli_stty_sane():
     tty.tcsetattr(sys.stdin, tty.TCSANOW, TTY_SETTINGS)
 
 
-def cli_input(user_action):
+def cli_input(user_action, refresh=0.5):
     """ read user input from stdin """
     # put terminal in mode 'cbreak' or 'raw' (no CR, disables ISIG)
     #   tty.setraw(), tty.setcbreak()
     #   https://github.com/python/cpython/blob/3.7/Lib/tty.py
+    # TODO: make refresh user configurable -- 0.5 is ok, 1 is too slow
+    #refresh = 0.5
     screen_redraw = 0
     key = ""
     tty.setraw(sys.stdin.fileno())
-    if select.select([sys.stdin], [], [], 0.5) == ([sys.stdin], [], []):
+    if select.select([sys.stdin], [], [], refresh) == ([sys.stdin], [], []):
         key = sys.stdin.buffer.raw.read(3).decode(sys.stdin.encoding)
         if key[:2].strip().isdigit():
             user_action = 1
-        elif key in ['v', 'V', '\r', '\x13', '\N{SPACE}'] or (user_action == 0 and key == '\N{ESC}[C'):
-            key = 0
+        # [vV], ENTER, SPACE, RIGHT
+        elif ((key in ['v', 'V', '\r', '\x13', '\N{SPACE}']) or
+              (user_action == 0 and key == '\N{ESC}[C')):
+            key = 1
             user_action = 1
         elif key in ['k', 'K']:
             user_action = 2
@@ -615,15 +620,14 @@ def cli_input(user_action):
         elif key in ['h', 'H', '?']:
             user_action = 3
             screen_redraw = 1
-        # RIGHT
+        # [nN], RIGHT
         elif key in ['n', 'N', '\N{ESC}[C']:
             user_action = 4
-        # LEFT
+        # [pP], LEFT
         elif key in ['p', 'P', '\N{ESC}[D']:
             user_action = 5
-        # TODO: disabled user search
-        # elif key == '/':
-        #      user_action = 7
+        elif CLI_SEARCH and key == '/':
+            user_action = 7
         # UP
         elif key == '\N{ESC}[A':
             user_action = 10
@@ -632,6 +636,19 @@ def cli_input(user_action):
             user_action = 11
         elif key in ['q', 'Q']:
             user_action = 9
+        # HOME
+        elif key == '\N{ESC}[1':
+            user_action = 12
+        # END
+        elif key == '\N{ESC}[4':
+            user_action = 13
+        # PGUP
+        elif key == '\N{ESC}[5':
+            user_action = 14
+        # PGDN
+        elif key == '\N{ESC}[6':
+            user_action = 15
+        # ESC
         elif key == '\N{ESC}':
             if user_action == 0:
                 user_action = 9
@@ -648,11 +665,11 @@ def cli_dialog(title, text):
     """ show dialog box """
     theme = Theme()
     draw = Theme.draw
-    upos = str(theme.lines - 5)
-    lpos = str(int(theme.columns / 10))
+    upos = str(theme.lines - 4)
+    lpos = str(int(theme.columns / 10)-3)
     rpad = 10
-    width = 71 - rpad
-    tpad = f"{' '*int(width/2-8)}"
+    width = 72 - rpad
+    tpad = f"{' '*int(width/2-8)}"  # pad title
     print(f"{Esc(upos+'A')}{Color('k,w')}")
     print(f"{Esc(lpos+'C')}{draw['ul']}{draw['h']*(width)}{draw['ur']}")
     print(f"{Esc(lpos+'C')}{draw['v']}{' '*width}{draw['v']}")
@@ -672,6 +689,7 @@ def cli_user_info(users, u_idx) -> list:
     if theme.lines > 25:
         print(theme.spacer)
         i += 1
+
     print(theme.fmt_uinfo_title('Login', tcol))
     print(theme.spacer)
     if users[u_idx].get('procid'):
@@ -711,7 +729,7 @@ def cli_user_info(users, u_idx) -> list:
                 f" User '{users[u_idx].name}' not found...", theme.max_col+11)
             )
             time.sleep(2)
-        print(theme.spacer)
+        #print(theme.spacer)
         while 23 + i < theme.lines:
             print(theme.spacer)
             i += 1
@@ -734,14 +752,14 @@ def cli_uinfo_prompt(p_cnt):
 def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
     """ get user input and run action """
     theme = Theme()
-    users = get_users()
     # action: userinfo
     if user_action == 1:
+        users = get_users()
         u_idx = p_cnt = 0
         # set u_idx from shortcut keys 0-9, search_user or user_scroll
         if isinstance(key, str) and key.isdigit() and int(key) in range(0, len(users)):
             u_idx = int(key)
-        else:
+        elif CLI_SEARCH:
             i = 0
             for user in users:
                 if search_user in user.name and i in range(0, len(users)):
@@ -755,14 +773,14 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
         cli_user_info(get_users(), u_idx)
         input_result = kill_result = None
         while True:
-            input_result = cli_input(user_action)
+            input_result = cli_input(user_action, 0.3)
             # uinfo: kill
             if input_result.get('user_action') == 2:
                 if u_idx in range(0, len(users)):
                     u_name = users[int(u_idx)].get('username')
                     kill_result = kill_procid(u_name, users)
                     if kill_result.get('status') == "Success":
-                        print("{0:<{1}.{1}}".format(f"{kill_result.get('status')}: Killed PID '{kill_result.get('procid')} ...", theme.columns))
+                        print("{0:<{1}.{1}}".format(f"{kill_result.get('status')}: Killed PID '{kill_result.get('procid')}' ...", theme.columns))
                         time.sleep(2)
                     else:
                         print("{0:<{1}.{1}}".format(f"{kill_result.get('error')}", theme.columns))
@@ -799,51 +817,71 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
     # action: show help popup
     elif user_action ==  3:
         cli_dialog("Help", HELP_TEXT)
-        while not cli_input(user_action).get('key'):
+        while not cli_input(user_action, 0.3).get('key'):
             time.sleep(0.1)
         user_action = 0
         screen_redraw = 1
-
     # action: search user
-    # elif user_action == 7:
-    #    prompt = f"> Search for username [ENTER]: {Style('bl')}_{Style('r')}"
-    #    print("{0:<{1}.{1}}".format(prompt, theme.columns))
-    #    stdin_string = ""
-    #    c = 0
-    #    while True:
-    #        user_input = sys.stdin.read(1)
-    #        # backspace
-    #        if user_input in [ '\b', '\x08', '\x7f' ]:
-    #            c -= 1 if c > 0 else 0
-    #            stdin_string = stdin_string[:-1]
-    #            print(f"{Esc('1A')}{Esc(str(c+len(prompt)-9)+'C')} ")
-    #        elif user_input == '\n':
-    #            break
-    #        else:
-    #            stdin_string += user_input
-    #            print(f"{Esc('1A')}{Esc(str(c+len(prompt)-9)+'C')}{user_input}")
-    #            c += 1
-    #    search_user = stdin_string
-    #    user_action = 0
-
+    elif CLI_SEARCH and user_action == 7:
+        prompt = f"> Search for username [ENTER]: {Style('bl')}_{Style('r')}"
+        print("{0:<{1}.{1}}".format(prompt, theme.columns))
+        stdin_string = ""
+        c = 0
+        while True:
+            user_input = sys.stdin.read(1)
+            # backspace
+            if user_input in [ '\b', '\x08', '\x7f' ]:
+                c -= 1 if c > 0 else 0
+                stdin_string = stdin_string[:-1]
+                print(f"{Esc('1A')}{Esc(str(c+len(prompt)-9)+'C')} ")
+            elif user_input == '\n':
+                break
+            else:
+                stdin_string += user_input
+                print(f"{Esc('1A')}{Esc(str(c+len(prompt)-9)+'C')}{user_input}")
+                c += 1
+        search_user = stdin_string
+        user_action = 0
     # action: quit (ESC)
     elif user_action == 9:
         cli_sigint_handler(any, any)
         sys.exit(0)
-    # action: scroll up
+    # action: scroll user list up (-1)
     elif user_action == 10:
         user_action = 0
         screen_redraw = 1
         user_scroll -= 1
-    # action: scroll down
+    # action: scroll user list down (+1)
     elif user_action == 11:
         user_action = 0
         screen_redraw = 1
         user_scroll += 1
+    # action: scroll to user list end (0)
+    elif user_action == 12:
+        user_action = 0
+        screen_redraw = 1
+        user_scroll = 0
+    # action: scroll to user list end
+    elif user_action == 13:
+        user_action = 0
+        screen_redraw = 1
+        user_scroll = len(get_users())-1
+    # action: scroll user list page up (-5)
+    elif user_action == 14:
+        user_action = 0
+        screen_redraw = 1
+        user_scroll -= 5
+    # action: scroll user list page down  (+5)
+    elif user_action == 15:
+        user_action = 0
+        screen_redraw  = 1
+        user_scroll += 5
     # handle any other key presses
     elif user_action == 0 and len(key) > 0:
-        text = f"{Style('b')}{Color('r,k')} Invalid option ... press 'h' for help{Style('r')}"
-        print("{0:>2.2}{1:<{2}}".format(' ', text, theme.columns))
+        text = "Invalid option ... press 'h' for help"
+        print("{0:>2.2}{1:<{2}}".format(
+            ' ', f"{Style('b')}{Color('r,k')}{text}{Style('r')}", theme.columns)
+        )
         print(f"{Esc('2F')}", end="")
         time.sleep(1)
     else:
@@ -866,7 +904,7 @@ def get_userfile(u_name) -> dict:
     value = []
     prev = ""
     for line in userfile_text:
-        for key in ['FLAGS', 'CREDITS', 'IP']:
+        for key in ['FLAGS', 'CREDITS', 'GROUP', 'IP']:
             if key in line:
                 if key != prev:
                     value = []
@@ -1045,19 +1083,17 @@ def get_users() -> list:
 
     return users
 
-
 def cli_mainloop():
     """ output users/totals to terminal """
+    theme = Theme()
     u_idx = 0
     repeat = 0              # init screen drawing related vars
     user_action = 0         # 1=userinfo 2=killuser 3=help 4=next 5=prev 6=back 7=search 9=quit
     screen_redraw = 0       # 1=redraw theme.header
     user_scroll = 0         # up=+1 down-1
-    user_max_lines = 15     # show max users per screen (on 80x25)
+    user_max = 15           # show max users per screen (on 80x25)
+    user_list_maxlines = user_list_go_next = user_list_turned_page = 0
     search_user = ""
-    theme = Theme()
-
-    user_list_max = user_list_next = 0
 
     print(f"{Esc('2J')}{Esc('H')}", end="")
     print(theme.header)
@@ -1102,19 +1138,27 @@ def cli_mainloop():
         # reset user idx for every repeat
         u_idx = 0
 
-        # prepare user list to show, remaining users goto next screen
-        if user_list_max and user_list_next:
-            show_users = users[user_max_lines:]
-            u_idx = user_max_lines+1
+        # on max users, goto next screen
+        if user_list_maxlines and not user_list_turned_page and user_scroll > user_max:
+            user_list_go_next = 1
+            user_list_turned_page = 1
+        elif user_list_maxlines and user_scroll <= user_max:
+            user_list_go_next = 0
+            user_list_turned_page = 0
+
+        # prepare user list to show and split > maxlines
+        if user_list_maxlines and user_list_go_next:
+            show_users = users[user_max+1:]
+            u_idx = user_max+1
         else:
+            user_list_turned_page = 0
             show_users = users[:user_scroll] + users[user_scroll:]
 
-        # user list loop, format/output
-
+        # user list loop, output formatted online users
         for user in show_users:
-            if search_user not in user.name:
-                print(theme.spacer)
-            if user_action == 0 and search_user in user.name:
+            if user_action == 0:
+                if CLI_SEARCH and search_user != "" and search_user not in user.name:
+                    continue
                 if not user.pct and not user.p_bar:
                     spy_pct = ''
                 else:
@@ -1125,56 +1169,51 @@ def cli_mainloop():
                 else:
                     spy_stat = f'{user.filename}'
 
-                menu_color = f"{Color('w,k')} "
-                if user_scroll == u_idx:
-                    #print(f'DEBUG: {user_scroll}={u_idx}/{len(users)}, user_list_max={user_list_max}, user_list_next={user_list_next}')
-                    menu_color = f"{Color('k,w')} " if color else ">"
-
                 info_spy = f'{spy_pct + " " if spy_pct else ""}{spy_stat}'
 
+                menu_color = f"{Color('w,k')} "
+                if user_scroll == u_idx:
+                    #print(f'DEBUG: user_scroll={user_scroll} u_idx={u_idx}/{len(users)}, maxlines={user_list_maxlines}, go_next={user_list_go_next}, turned_page={user_list_turned_page}', user_max, theme.lines)
+                    #print(f'DEBUG: user_scroll={user_scroll} u_idx={u_idx}/{len(users)}, user_max={user_max}, t_lines={theme.lines}, {(len(users)-1)-user_max}')
+                    #time.sleep(1)
+                    menu_color = f"{Color('k,w')} " if color else ">"
+
+                col = len(theme.fill)-62 if len(theme.fill) > 0 else 18
                 if user.mb_xfered:
-                    print("{vrchar} [{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} XFER: {mb_xfered:8.1f}MB {fill}{vrchar}".format(
+                    print("{vrchar} [{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {spy_stat:{col}.{col}}{vrchar}{rst}".format(
                         vrchar=Theme.vrchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.status,
-                        mb_xfered=user.mb_xfered(), fill=theme.fill
+                        spy_stat=spy_stat, col=col, rst=Style('r')
                     ))
                 else:
                     print("{vrchar}{c}[{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {info_spy:{col}.{col}}{vrchar}{rst}".format(
                     c=menu_color, vrchar=Theme.vrchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.status,
-                        info_spy=info_spy, col=len(theme.fill)-62 if len(theme.fill) > 0 else 18, rst=Style('r')
+                        info_spy=info_spy, col=col, rst=Style('r')
                     ))
 
                 u_idx += 1
 
-                #print(f'DEBUG: u_idx={u_idx}, user_scroll={user_scroll}, len(users)={len(users)}')
-
-            # TODO: make transition to next page smoother
-
-            if user_list_max and user_scroll <= user_max_lines:
-                user_list_next = 0
-
-            # goto next screen
-            if user_list_max and user_scroll > user_max_lines:
-                user_list_next = 1
-
-            # goto 0 on start or end of user list
-            if (user_list_max and user_scroll not in range(0, len(users)+1)):
-                user_list_next = 0
-                user_scroll = 0
-            if (not user_list_max and user_scroll not in range(0, len(users))):
-                user_list_next = 0
-                user_scroll = 0
-
-            # max lines
+            # dont scroll outside bounds
+            if user_scroll not in range(0, len(users)):
+                if user_list_maxlines or not user_list_go_next:
+                    # top
+                    if user_scroll <= 0:
+                        user_scroll = 0
+                    # bottom
+                    elif user_scroll >= len(users):
+                        user_scroll = len(users)-1
+                        continue
+            # max lines printed for screen size
             if user_action == 0 and u_idx + 9 > theme.lines:
-                user_list_max = 1
-                if user_list_next == 0:
+                user_list_maxlines = 1
+                if user_list_go_next == 0:
+                    # show right side scroll indicator 'v'
                     print(f"{Esc('1A')}{Esc(str(theme.max_col+3)+'C')}{Color('m,k')}v")
                     break
 
-        # fill next screen, after last user
-        if user_list_max and user_list_next:
+        # fill screen, after last user (next page)
+        if user_list_maxlines and user_list_go_next:
             i = 0
-            while i + user_max_lines-1 <= theme.lines:
+            while i + (len(users)-user_max) < theme.lines-7:
                 print(theme.spacer)
                 i += 1
 
@@ -1195,8 +1234,9 @@ def cli_mainloop():
                 downloads=users[0].downloads, total_dn_speed=total_dn_speed, dn_unit=total_dn_unit,
                 total=users[0].total, total_speed=total_speed, total_unit=total_unit, fill=f'{" "*(theme.columns-80)}'
             ))
-            print("{vrchar} Currently {onlineusers:>3}{rb} of {maxusers:>3} users are online... {space:28} {fill}{vrchar}".format(
-                vrchar=Theme.vrchar, space=' ', onlineusers=users[0].onlineusers, rb=Style('rb'), maxusers=TOTALUSERS, fill=f'{" "*(theme.columns-80)}'
+            print("{vrchar} Currently {onlineusers:>3}{rb} of {maxusers:>3} users are online... {space:19} {curtime} {fill}{vrchar}".format(
+                vrchar=Theme.vrchar, space=' ', onlineusers=users[0].onlineusers, rb=Style('rb'), maxusers=TOTALUSERS, fill=f'{" "*(theme.columns-80)}',
+                curtime = datetime.datetime.now().strftime("%T")
             ))
             print(theme.footer)
             print()
@@ -1208,18 +1248,19 @@ def cli_mainloop():
                      f"Press {Style('b')}CTRL-C{Style('rb')} to quit"
             print(prompt, end="")
             print(f"{Esc('1A')}")
+
         # handle keyboard input
-        input_result = cli_input(user_action)
+        input_result = cli_input(user_action, REFRESH)
         [user_action, screen_redraw, user_scroll, search_user] = cli_action(
-            **input_result, user_scroll=user_scroll, search_user=search_user
+            **input_result,
+            user_scroll=user_scroll,
+            search_user=search_user
         )
 
         #if _WITH_GEOIP and GEOIP2_ENABLE:
         #    time.sleep(2)
         #if user_scroll == 1:
         #    time.sleep(2)
-
-        show_users = users[user_scroll:] + users[:user_scroll]
 
         repeat += 1
 
