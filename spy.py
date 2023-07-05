@@ -6,16 +6,13 @@
 ################################################################################
 # SPY.PY                                                                 # slv #
 ################################################################################
-# Shows users logged into glftpd in terminal or as web page                    #
+# Shows users logged into glftpd, in terminal or as web page                   #
 # Like 'gl_spy' and 'webspy' from foo-tools                                    #
 # Uses SHM and glftpd's 'ONLINE' C struct, module sysv_ipc is required         #
 # See README and comments in spy.conf for install and config instructions      #
 ################################################################################
 """
 
-# TODO: cli limit flicker/blinking on refresh in user loop
-
-#import string
 import struct
 import re
 import time
@@ -29,9 +26,7 @@ import collections
 import signal
 import select
 import tty
-
 import subprocess
-
 import sysv_ipc
 
 
@@ -50,7 +45,7 @@ if _WITH_FLASK:
 if _WITH_GEOIP:
     import geoip2.webservice
 
-VERSION = "20230624"
+VERSION = "20230705"
 
 SCRIPT_PATH = os.path.abspath(__file__) if os.path.abspath(__file__) else os.path.realpath(sys.argv[0])
 # pyinstaller
@@ -70,7 +65,7 @@ GEOIP2_CLIENT = None
 
 HTTPD_MODE = 0
 FLASK_MODE = 0
-CLI_SEARCH = 0  # search username in list. not that usefull, disabled by default
+CLI_SEARCH = 0  # search username in list, not that usefull - disabled by default
 
 SPY_VERSTR = f"spy-{VERSION}"
 if _WITH_GEOIP:
@@ -116,7 +111,7 @@ config_errors = []
 for CONFIG_FN in set([CONFIGFILE, f'{SCRIPT_DIR}/spy.conf']):
     try:
         os.path.isfile(CONFIG_FN)
-    except Exception as config_err:
+    except OSError as config_err:
         config_errors.append(config_err)
     else:
         break
@@ -132,11 +127,6 @@ if len(config_errors) > 0:
         print(config_err)
         sys.exit(1)
 
-TLS_MODE = [
-    'None',       # no ssl
-    'Control',    # ssl on control
-    'Both'        # ssl on control and data
-]
 
 try:
     glrootpath = config['DEFAULT']['glrootpath']
@@ -263,7 +253,6 @@ if MAXUSERS == -1 and glconf_max > 0:
 else:
     TOTALUSERS = maxusers
 
-# removed:  Press '/' to search for username
 HELP_TEXT  = """
   Main screen:
     Up/Down keys scroll in user list, and PgUp/PgDn/Home/End
@@ -353,11 +342,15 @@ class User:
         """ bytes_txfer: convert 2 uint32 to uint64 """
         return self.get('bytes_txfer2') * pow(2, 32) + self.get('bytes_txfer1')
 
+    def get_mb_xfered(self) -> int:
+        """ convert uploaded bytes to mb """
+        return (abs(self.get_bytes_xfer() / 1024 / 1024)) if self.get_bytes_xfer() else 0
+
     def get(self, attr):
         """ get attributes from tuple """
         r = getattr(self.user_tuple, attr)
-        if debug > 0:
-            print(f'DEBUG: user.get() type(r)={type(r)}')
+        if debug > 1:
+            print(f'DEBUG: user.get() attr={attr} type={type(r)}')
         if isinstance(r, bytes):
             return r.split(NULL_CHAR, 1)[0].decode()
         return r
@@ -499,36 +492,38 @@ class Theme:
         """ format separator """
         # '|-----------------|'
         draw = self.draw
-        return "{mcol}{vr}{hline}{vl}{rst}".format(
-            mcol=self.maincolor, vr=draw['vr'], hline=draw['h']*(self.columns-9),
+        return "{mc}{vr}{hline}{vl}{rst}".format(
+            mc=self.maincolor, vr=draw['vr'], hline=draw['h']*(self.columns-9),
             vl=draw['vl'], rst=Style('r')
         )
     def fmt_header(self) -> str:
         """ format header """
         draw = self.draw
-        return "{mcol}{ul}{hline}{ur}{rst}".format(
-            mcol=self.maincolor, ul=draw['ul'], ur=draw['ur'],hline=draw['h']*(self.columns-9), rst=Style('r')
+        return "{mc}{ul}{hline}{ur}{rst}".format(
+            mc=self.maincolor, ul=draw['ul'], ur=draw['ur'],hline=draw['h']*(self.columns-9), rst=Style('r')
         )
     def fmt_footer(self) -> str:
         """ format footer """
         draw = self.draw
-        return "{mcol}{dl}{hline}[{lcol}PY-SPY{mcol}]{h}{h}{h}{dr}{rst}".format(
-            mcol=self.maincolor, dl=draw['dl'], hline=draw['h']*(self.columns-20),
-            lcol=f"{Style('b')}{Color('m,k')}", h=draw['h'], dr=draw['dr'], rst=Style('r')
+        return "{mc}{dl}{hline}[{lc}PY-SPY{mc}]{h}{h}{h}{dr}{rst}".format(
+            mc=self.maincolor, dl=draw['dl'], hline=draw['h']*(self.columns-20),
+            lc=f"{Style('b')}{Color('m,k')}", h=draw['h'], dr=draw['dr'], rst=Style('r')
         )
 
     def fmt_spacer(self) -> str:
         """ format spacer  """
         # '| <~~~ space ~~~> |'
-        return "{0} {1:<{2}.{2}} {0}".format(self.vrchar, ' ', self.max_col)
+        return "{v} {sp:<{col}.{col}} {v}".format(v=self.vrchar, sp=' ', col=self.max_col)
 
     def fmt_uinfo_title(self, text, col) -> str:
         """ format title on userinfo screen """
-        return "{0} {1:<{2}.{2}} {0}".format(self.vrchar, f"{Style('u')}{text}{Style('r')}", col)
+        return "{v} {text:<{col}.{col}} {v}".format(
+            v=self.vrchar, text=f"{Style('u')}{text}{Style('r')}", col=col
+        )
 
     def fmt_uinfo_line(self, text, col) -> str:
         """ format line on userinfo screen """
-        return "{0} {1:>4.4}{2:<{3}.{3}} {0}".format(self.vrchar, ' ', text, col)
+        return "{v} {sp:>4.4}{text:<{col}.{col}} {v}".format(v=self.vrchar, sp=' ', text=text, col=col)
 
 
 # functions
@@ -701,14 +696,19 @@ def cli_dialog(title, text):
 def cli_user_info(users, u_idx, user_cache=[]) -> list:
     """ show formatted user details from login and userifle """
     theme = Theme()
-    tcol = theme.max_col+8 if color else theme.max_col
+    tls_mode = [
+        'None',       # no ssl
+        'Control',    # ssl on control
+        'Both'        # ssl on control and data
+    ]
+    mcol_title = theme.max_col+8 if color else theme.max_col
     i = 0
     print(theme.header)
     if theme.lines > 25:
         print(theme.spacer)
         i += 1
 
-    print(theme.fmt_uinfo_title('Login', tcol))
+    print(theme.fmt_uinfo_title('Login', mcol_title))
     print(theme.spacer)
     if users[u_idx].get('procid'):
         ssl_flag = users[u_idx].get('ssl_flag')
@@ -734,17 +734,17 @@ def cli_user_info(users, u_idx, user_cache=[]) -> list:
             f"Last DL: {last_dl}",
             " "
         ]
-        c = theme.max_col+4 if color else theme.max_col-4
+        mcol = theme.max_col+4 if color else theme.max_col-4
         for l in login_info:
-            print(theme.fmt_uinfo_line(l, c))
-            c = theme.max_col-4
+            print(theme.fmt_uinfo_line(l, mcol))
+            mcol = theme.max_col-4
         print(theme.separator)
         if theme.lines > 25:
             print(theme.spacer)
             i += 1
         r = get_userfile(users[u_idx].name)
         if r.get('status') == "Success":
-            print(theme.fmt_uinfo_title('Userfile', tcol))
+            print(theme.fmt_uinfo_title('Userfile', mcol_title))
             print(theme.spacer)
             for key, val in r.get('result').items():
                 text = f"{key}: {val}"
@@ -756,7 +756,6 @@ def cli_user_info(users, u_idx, user_cache=[]) -> list:
                 f" User '{users[u_idx].name}' not found...", theme.max_col+11)
             )
             time.sleep(2)
-        #print(theme.spacer)
         while 23 + i < theme.lines:
             print(theme.spacer)
             i += 1
@@ -781,7 +780,6 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
     theme = Theme()
     # action: userinfo
     if user_action == 1:
-        #users = get_users()
         users = []
         for user in get_users():
             users.append(set_stats(user))
@@ -864,6 +862,7 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
                 c -= 1 if c > 0 else 0
                 stdin_string = stdin_string[:-1]
                 print(f"{Esc('1A')}{Esc(str(c+len(prompt)-9)+'C')} ")
+            # ENTER
             elif user_input == '\n':
                 break
             else:
@@ -908,6 +907,7 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
         user_scroll += 5
     # handle any other key presses
     elif user_action == 0 and len(key) > 0:
+        screen_redraw = 1
         text = "Invalid option ... press 'h' for help"
         print("{0:>2.2}{1:<{2}}".format(
             ' ', f"{Style('b')}{Color('r,k')}{text}{Style('r')}", theme.columns)
@@ -995,7 +995,6 @@ def set_stats(user):
             user.iso_code = None
     # ul speed
     if (user.get('status')[:4] == 'STOR' or user.get('status')[:4] == 'APPE') and user.get_bytes_xfer():
-        user.mb_xfered = (abs(user.get_bytes_xfer() / 1024 / 1024)) if user.get_bytes_xfer() else 0
         traf_dir = "Up"
         user.speed = abs(
             user.get_bytes_xfer() / 1024 / ((tstop_tv_sec - user.get('tstart_tv_sec')) +
@@ -1111,7 +1110,7 @@ def cli_mainloop():
     screen_redraw = 0       # 1=redraw theme.header
     user_scroll = 0         # up=+1 down-1
     user_max = 15           # show max users per screen (on 80x25)
-    user_list_maxlines = user_list_go_next = user_list_turned_page = 0
+    user_list_maxlines = user_list_next = user_list_page = 0
     search_user = ""
 
     print(f"{Esc('2J')}{Esc('H')}", end="")
@@ -1124,12 +1123,11 @@ def cli_mainloop():
             for user in get_users():
                 users.append(set_stats(user))
         except RuntimeError:
+            text = f"No users logged in.. Press {Style('b')}CTRL-C{Style('rb')} to quit"
             print(f"{Esc('2J')}{Esc('H')}", end="")
             print(theme.header)
             print(theme.spacer)
-            print("{0} {1:<{2}.{2}} {0}".format(
-                Theme.vrchar, f"No users logged in.. Press {Style('b')}CTRL-C{Style('rb')} to quit", theme.max_col+9)
-            )
+            print("{0} {1:<{2}.{2}} {0}".format(Theme.vrchar, text, theme.max_col+9))
             print(theme.spacer)
             print(theme.footer)
             print()
@@ -1158,19 +1156,19 @@ def cli_mainloop():
         u_idx = 0
 
         # on max users, goto next screen
-        if user_list_maxlines and not user_list_turned_page and user_scroll > user_max:
-            user_list_go_next = 1
-            user_list_turned_page = 1
+        if user_list_maxlines and not user_list_page and user_scroll > user_max:
+            user_list_next = 1
+            user_list_page = 1
         elif user_list_maxlines and user_scroll <= user_max:
-            user_list_go_next = 0
-            user_list_turned_page = 0
+            user_list_next = 0
+            user_list_page = 0
 
         # prepare user list to show and split > maxlines
-        if user_list_maxlines and user_list_go_next:
+        if user_list_maxlines and user_list_next:
             show_users = users[user_max+1:]
             u_idx = user_max+1
         else:
-            user_list_turned_page = 0
+            user_list_page = 0
             show_users = users[:user_scroll] + users[user_scroll:]
 
         # user list loop, output formatted online users
@@ -1190,49 +1188,36 @@ def cli_mainloop():
 
                 info_spy = f'{spy_pct + " " if spy_pct else ""}{spy_stat}'
 
-                menu_color = f"{Color('w,k')} "
+                menu_selector = f"{Color('w,k')} "
                 if user_scroll == u_idx:
-                    #print(f'DEBUG: user_scroll={user_scroll} u_idx={u_idx}/{len(users)}, maxlines={user_list_maxlines}, go_next={user_list_go_next}, turned_page={user_list_turned_page}', user_max, theme.lines)
-                    #print(f'DEBUG: user_scroll={user_scroll} u_idx={u_idx}/{len(users)}, user_max={user_max}, t_lines={theme.lines}, {(len(users)-1)-user_max}')
-                    #time.sleep(1)
-                    menu_color = f"{Color('k,w')} " if color else ">"
+                    menu_selector = f"{Color('k,w')} " if color else ">"
 
-                col = len(theme.fill)-62 if len(theme.fill) > 0 else 18
+                col = len(theme.fill) - 62 if len(theme.fill) > 0 else 18
                 if user.mb_xfered:
                     print("{vrchar} [{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {spy_stat:{col}.{col}}{vrchar}{rst}".format(
                         vrchar=Theme.vrchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.status,
                         spy_stat=spy_stat, col=col, rst=Style('r')
                     ))
                 else:
-                    print("{vrchar}{c}[{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {info_spy:{col}.{col}}{vrchar}{rst}".format(
-                    c=menu_color, vrchar=Theme.vrchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.status,
+                    print("{vrchar}{ms}[{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {info_spy:{col}.{col}}{vrchar}{rst}".format(
+                    ms=menu_selector, vrchar=Theme.vrchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.status,
                         info_spy=info_spy, col=col, rst=Style('r')
                     ))
 
                 u_idx += 1
 
-            # dont scroll outside bounds
-            if user_scroll not in range(0, len(users)):
-                if user_list_maxlines or not user_list_go_next:
-                    # top
-                    if user_scroll <= 0:
-                        user_scroll = 0
-                    # bottom
-                    elif user_scroll >= len(users):
-                        user_scroll = len(users)-1
-                        continue
             # max lines printed for screen size
             if user_action == 0 and u_idx + 9 > theme.lines:
                 user_list_maxlines = 1
-                if user_list_go_next == 0:
+                if user_list_next == 0:
                     # show right side scroll indicator 'v'
                     print(f"{Esc('1A')}{Esc(str(theme.max_col+3)+'C')}{Color('m,k')}v")
                     break
 
         # fill screen, after last user (next page)
-        if user_list_maxlines and user_list_go_next:
+        if user_list_maxlines and user_list_next:
             i = 0
-            while i + (len(users)-user_max) < theme.lines-7:
+            while i + (len(users) - user_max) < theme.lines - 7:
                 print(theme.spacer)
                 i += 1
 
@@ -1242,7 +1227,7 @@ def cli_mainloop():
             total_dn_speed, total_dn_unit = conv_speed(User.total_dn_speed)
             total_speed, total_unit = conv_speed(User.total_speed)
             i = 0
-            # fill screen after last user, add 8 lines for totals + prompt
+            # fill screen; after last user, add 8 lines for totals + prompt
             while u_idx + 8 + i < theme.lines:
                 print(theme.spacer)
                 i += 1
@@ -1281,6 +1266,17 @@ def cli_mainloop():
         #if user_scroll == 1:
         #    time.sleep(2)
 
+        # dont scroll outside bounds
+        if user_scroll not in range(0, len(users)):
+            if user_list_maxlines or not user_list_next:
+                # top
+                if user_scroll <= 0:
+                    user_scroll = 0
+                # bottom
+                elif user_scroll >= len(users):
+                    user_scroll = len(users) - 1
+                    continue
+
         repeat += 1
 
 
@@ -1291,6 +1287,7 @@ def cli_sigint_handler(signal_received, frame):
     tty.tcsetattr(sys.stdin, tty.TCSANOW, TTY_SETTINGS)
     print(f"{Esc('1E')}")
     print(f'\n{"Exiting spy.py...":<{theme.columns}}\n')
+    print(Style('r'), end="")
     if _WITH_GEOIP and GEOIP2_ENABLE:
         GEOIP2_CLIENT.close()
     sys.exit(0)
