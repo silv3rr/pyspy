@@ -308,14 +308,13 @@ class User:
     geoip2_client = GEOIP2_CLIENT if GEOIP2_CLIENT else None
     geoip2_shown_err = False
 
-    def __init__(self, user_tuple, online=0, addr="", ip="0.0.0.0", mb_xfered=0):
+    def __init__(self, user_tuple, online=0):
         self.user_tuple = user_tuple
         self.name = self.get_name()
         self.group = self.get_group()
         self.online = online
-        self.addr = addr
-        self.ip = ip
-        self.mb_xfered = mb_xfered
+        self.mb_xfered = self.get_mb_xfered()
+        (self.addr, self.ip) =  self.get_ip()
 
     def get_name(self) -> str:
         """ get username from tuple """
@@ -326,6 +325,25 @@ class User:
         if self.user_tuple.groupid >= 0:
             return get_group(self.user_tuple.groupid)
         return ""
+
+    def get_ip(self) -> tuple:
+        """ get adress and ip using host from tuple """
+        addr = ""
+        ip = "0.0.0.0"
+        if self.user_tuple.host != '':
+            (_, addr) = self.get('host').split('@', 2)[0:2]
+            # ipv4/6
+            if (''.join((addr).split('.', 3)).isdigit()) or (':' in addr):
+                ip = addr
+            # addr is not a fqdn
+            elif '.' not in addr:
+                ip = '127.0.0.1' if addr == 'localhost' else '0.0.0.0'
+            else:
+                try:
+                    ip = socket.gethostbyname(addr)
+                except OSError:
+                    pass
+        return (addr, ip)
 
     def get_bytes_xfer(self) -> int:
         """ bytes_xfer: convert 2 uint32 to uint64 """
@@ -675,7 +693,7 @@ def cli_dialog(title, text):
     print(f"{Style('r')}")
 
 
-def cli_user_info(users, u_idx) -> list:
+def cli_user_info(users, u_idx, user_cache=[]) -> list:
     """ show formatted user details from login and userifle """
     theme = Theme()
     tcol = theme.max_col+8 if color else theme.max_col
@@ -689,13 +707,22 @@ def cli_user_info(users, u_idx) -> list:
     print(theme.spacer)
     if users[u_idx].get('procid'):
         ssl_flag = users[u_idx].get('ssl_flag')
-        ssl_msg = TLS_MODE[ssl_flag] if ssl_flag in range(0, len(TLS_MODE)) else 'UNKNOWN'
+        ssl_msg = tls_mode[ssl_flag] if ssl_flag in range(0, len(tls_mode)) else 'UNKNOWN'
+        ip = users[u_idx].ip
+        iso_code  = None
+        for l in users, user_cache:
+            if u_idx in range(0, len(l)):
+                try:
+                    iso_code = l[u_idx].iso_code
+                    break
+                except AttributeError:
+                    pass
         last_dl = '{:.1f}GB'.format(round(int(users[u_idx].get_bytes_txfer()) / 1024**3, 1))
         login_info = [
             f"Username: '{Style('b')}{users[u_idx].name}{Style('r')}' [{u_idx}/{len(users)-1}]",
             f"PID: {users[u_idx].get('procid')} SSL: {ssl_msg}",
             f"RHost: {users[u_idx].get('host')}",
-            f"IP: {users[u_idx].ip}",
+            f"IP: {ip}{' ' + iso_code if iso_code else ''}",
             f"Tagline: {users[u_idx].get('tagline')}",
             f"Currentdir: {users[u_idx].get('currentdir')}",
             f"Status: {users[u_idx].get('status')}",
@@ -749,7 +776,10 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
     theme = Theme()
     # action: userinfo
     if user_action == 1:
-        users = get_users()
+        #users = get_users()
+        users = []
+        for user in get_users():
+            users.append(set_stats(user))
         u_idx = p_cnt = 0
         # set u_idx from shortcut keys 0-9, search_user or user_scroll
         if isinstance(key, str) and key.isdigit() and int(key) in range(0, len(users)):
@@ -765,7 +795,7 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
             u_idx += user_scroll
         print(f"{Esc('2J')}{Esc('H')}", end="")
         # show user details and wait for user input
-        cli_user_info(get_users(), u_idx)
+        cli_user_info(users, u_idx)
         input_result = kill_result = None
         while True:
             input_result = cli_input(user_action, 0.3)
@@ -787,19 +817,19 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
             if input_result.get('user_action') == 4:
                 u_idx = u_idx + 1 if (u_idx + 1 < len(users)) else 0
                 print(f"{Esc('2J')}{Esc('H')}", end="")
-                cli_user_info(get_users(), u_idx)
+                cli_user_info(get_users(), u_idx, users)
             # uinfo: prev
             elif input_result.get('user_action') == 5:
                 u_idx = u_idx-1 if (u_idx-1 < len(users) and u_idx > 0) else 0
                 print(f"{Esc('2J')}{Esc('H')}", end="")
-                cli_user_info(get_users(), u_idx)
+                cli_user_info(get_users(), u_idx, users)
             # uinfo: help
             if input_result.get('user_action') == 3:
                 cli_dialog("Help", HELP_TEXT)
                 while not cli_input(user_action).get('key'):
                     time.sleep(0.1)
                 print(f"{Esc('2J')}{Esc('H')}", end="")
-                cli_user_info(get_users(), u_idx)
+                cli_user_info(get_users(), u_idx, users)
             # uinfo: back (ESC), quit
             if input_result.get('user_action') in [6, 9]:
                 break
@@ -936,20 +966,7 @@ def set_stats(user):
     maskchar = " "
     user.speed = 0
 
-    if user.get('host') != '':
-        (_, user.addr) = user.get('host').split('@', 2)[0:2]
-        # ipv4/6
-        if (''.join((user.addr).split('.', 3)).isdigit()) or (':' in user.addr):
-            user.ip = user.addr
-        # addr is not a fqdn
-        elif '.' not in user.addr:
-            user.ip = '127.0.0.1' if user.addr == 'localhost' else '0.0.0.0'
-        else:
-            try:
-                user.ip = socket.gethostbyname(user.addr)
-            except OSError:
-                pass
-    #  get filename
+    # get filename
     if len(user.get('status')) > 4 and not user.get('status')[4:].startswith('-'):
         user.filename = user.get('status')[5:]
     # check if user in hidden users/groups
