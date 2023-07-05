@@ -156,10 +156,10 @@ try:
     httpd_port = config.getint('WEB', 'httpd_port', fallback=8080)
     flask_host = config.get('WEB', 'flask_host', fallback='localhost')
     flask_port = config.getint('WEB', 'flask_port', fallback=5000)
-    GEOIP2_ENABLE = config.getboolean('GEOIP', 'geoip2_enable', fallback=False)
     geoip2_accountid = config['GEOIP']['geoip2_accountid']
     geoip2_licensekey = config['GEOIP']['geoip2_licensekey']
     geoip2_proxy = config.get('GEOIP', 'geoip_proxy', fallback=None)
+    geoip2_enable = config.getboolean('GEOIP', 'geoip2_enable', fallback=False)
 except (KeyError, configparser.InterpolationError) as conf_err:
     print(f'Error: check config file\n{conf_err}')
     sys.exit(1)
@@ -575,23 +575,28 @@ def get_geocode(client, userip, shown_err) -> list:
         for prefix in ['127.', '10.', '172.16.1', '172.16.2', '172.16.3', '192.168.']:
             if userip.startswith(prefix):
                 if debug > 3:
-                    print(f'DEBUG: geoip2 MATCH {prefix} in {userip}')
+                    print(f'DEBUG: geoip2 MATCH "{prefix}" in "{userip}"')
                 return [client, 'DEBUG', shown_err]
     if GEOIP2_BUF.get(userip):
         iso_code = GEOIP2_BUF[userip]
     else:
         try:
             if debug == 1:
-                print('DEBUG: got cached GEOIP2_BUF[userip]', GEOIP2_BUF[userip])
+                print(f'DEBUG: geoip2 "{userip}" not cached, GEOIP2_BUF="{GEOIP2_BUF}"')
             iso_code = client.country(userip).country.iso_code
             GEOIP2_BUF[userip] = iso_code
         except geoip2.errors.GeoIP2Error as err:
             # var shown_err makes sure we only show the error once
-            if (err.__class__.__name__ in ['AddressNotFoundError', 'reqOutOfQueriesError']) and shown_err == 0:
+            if (err.__class__.__name__ in ['AddressNotFoundError', 'OutOfQueriesError']) and shown_err == 0:
                 shown_err = 1
-                print("\n{0:<{1}}\n".format(f'Error: geoip2 {err.__class__.__name__} ({err})', theme.columns))
+                text = f"{Color('r,k')}Error: geoip2 {err.__class__.__name__} {err}"
+                mcol = theme.max_col+8 if color else theme.max_col-8
+                if len(text) + 8 > mcol:
+                    text = text[:73] + ' ...'
+                print("{0} {1:<{2}.{2}} {0}".format(Theme.vrchar, text, mcol))
+                print(theme.footer)
+                print(f"{Esc('2F')}", end="")
                 time.sleep(2.5)
-                print(f"{Esc('3F')}{Esc('0J')}{Esc('1F')}")
     return [client, iso_code, shown_err]
 
 
@@ -984,8 +989,10 @@ def set_stats(user):
             else:
                 mask += 1
     if _WITH_GEOIP and GEOIP2_ENABLE:
-        (User.geoip2_client, user.iso_code, User.geoip2_shown_err) = get_geocode(User.geoip2_client, user.ip, User.geoip2_shown_err)
-        user.ip = f'{user.ip} {user.iso_code}' if (user.ip and user.iso_code) else user.ip
+        try:
+            (User.geoip2_client, user.iso_code, User.geoip2_shown_err) = get_geocode(User.geoip2_client, user.ip, User.geoip2_shown_err)
+        except geoip2.errors.GeoIP2Error:
+            user.iso_code = None
     # ul speed
     if (user.get('status')[:4] == 'STOR' or user.get('status')[:4] == 'APPE') and user.get_bytes_xfer():
         user.mb_xfered = (abs(user.get_bytes_xfer() / 1024 / 1024)) if user.get_bytes_xfer() else 0
