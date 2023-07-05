@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <title>webspy</title>
+        <title>spy.py</title>
         <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     </head>
     <body>
         <div class="top">
-            <span id="title">spy.py | web</span>
+            <span id="title">py-spy | web</span>
             <div id="version">
                 <div>{{ spy_version }}</div>
                 <div>{{ glftpd_version }}</div>
@@ -100,7 +100,7 @@
                 <span id="bartext" style="display:inline-block">No logged in users users found..</span>
             {% else -%}
                 <span id="bartext">
-                    <img src="{{ url_for('static', filename='pirate.svg') }}"> Online users
+                    <img src="{{ url_for('static', filename='pirate_icon_138281.svg') }}"> Online users
                 </span>
             {% endif %}
         </div>
