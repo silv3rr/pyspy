@@ -149,6 +149,7 @@ try:
     count_hidden = config.getboolean('DEFAULT', 'count_hidden', fallback=True)
     idle_barrier = config.getint('DEFAULT', 'idle_barrier', fallback=30)
     threshold = config.getint('DEFAULT', 'speed_threshold', fallback=1024)
+    refresh  = config.getfloat('DEFAULT', 'refresh', fallback=1)
     color = config.getint('DEFAULT', 'color', fallback=1)
     debug = config.getint('DEFAULT', 'debug', fallback=0)
     httpd_host = config.get('WEB', 'httpd_host', fallback='localhost')
@@ -167,7 +168,8 @@ CHIDDEN = 1 if count_hidden else 0
 MAXUSERS = maxusers if maxusers else 0
 THRESHOLD = threshold if threshold else 0
 IDLE_BARRIER = idle_barrier if idle_barrier else 0
-REFRESH = 1  # refresh rate, default is 0.5
+GEOIP2_ENABLE = geoip2_enable if geoip2_enable else False
+REFRESH = refresh if refresh else 1
 
 if _WITH_FLASK:
     FLASK_OPTIONS = {}
@@ -584,28 +586,21 @@ def conv_speed(speed) -> list:
     return [float('{:7.0f}'.format(speed)), 'KiB/s']
 
 
-#def cli_max_col(message) -> str:
-#    """ format string msg with max columns """
-#    return "{0:<{1}.{1}}".format(message, max_col)
-
-
 def cli_stty_sane():
     """ default terminal settings, turn on echo """
     # restore orig tty settings (termios)
     tty.tcsetattr(sys.stdin, tty.TCSANOW, TTY_SETTINGS)
 
 
-def cli_input(user_action, refresh=0.5):
+def cli_input(user_action, cli_refresh=0.5):
     """ read user input from stdin """
     # put terminal in mode 'cbreak' or 'raw' (no CR, disables ISIG)
     #   tty.setraw(), tty.setcbreak()
     #   https://github.com/python/cpython/blob/3.7/Lib/tty.py
-    # TODO: make refresh user configurable -- 0.5 is ok, 1 is too slow
-    #refresh = 0.5
     screen_redraw = 0
     key = ""
     tty.setraw(sys.stdin.fileno())
-    if select.select([sys.stdin], [], [], refresh) == ([sys.stdin], [], []):
+    if select.select([sys.stdin], [], [], cli_refresh) == ([sys.stdin], [], []):
         key = sys.stdin.buffer.raw.read(3).decode(sys.stdin.encoding)
         if key[:2].strip().isdigit():
             user_action = 1
