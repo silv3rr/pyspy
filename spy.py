@@ -30,7 +30,7 @@ import subprocess
 import sysv_ipc
 
 
-_WITH_GEOIP = True
+_WITH_GEOIP = False
 _WITH_HTTPD = True
 _WITH_FLASK = True
 
