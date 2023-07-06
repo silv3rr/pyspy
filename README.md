@@ -14,7 +14,7 @@ _web mode_
 
 ![screenshot_web](docs/web.png)
 
-Here's some more [more screenshots](docs/Screenshots.md) and asciinema [demo](docs/Demo.md).
+Here's some more [more screenshots](docs/Screenshots.md) and a quick [demo](docs/Demo.md) clip.
 
 But wait, ppl cry.. "why is this stupid python! It will be impossible for me to use". Well, there's convenient binaries available for you. No messing about with annoying things like special python version 3.12.3.4, modules and virtual env's. Just copy the binary and run `spy.py`, done.
 
