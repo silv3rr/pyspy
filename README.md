@@ -18,8 +18,6 @@ Here's some more [more screenshots](docs/Screenshots.md) and a quick [demo](docs
 
 But wait, ppl cry.. "why is this stupid python! It will be impossible for me to use". Well, there's convenient binaries available for you. No messing about with annoying things like special python version 3.12.3.4, modules and virtual env's. Just copy the binary and run `spy.py`, done.
 
-Alternatively there will be docker image and pyspy will also be part of [docker-glftpd](https://github.com/silv3rr/docker-glftpd)'s web interface which offers a complete gl install.
-
 ## Usage
 
 Running `./spy` without args starts `--cli` mode (default)
@@ -33,7 +31,7 @@ Running `./spy` without args starts `--cli` mode (default)
 
 Only latest glftpd version 2.12+ is supported (other versions untested)
 
-Pick one of these setup methods
+Pick one of these 3 setup methods
 
 ## binaries
 
@@ -42,10 +40,6 @@ No dependencies, just single executable file available to [download](../../relea
 Supported: CentOS 7, Debian 11, 12 and Ubuntu 20.04, 22.04
 
 All files on [Releases](../../releases) tab. Click **Show all .. assets** link at the bottom.
-
-## docker
-
-pyspy will be added to [docker-glftpd](https://github.com/silv3rr/docker-glftpd) soon(tm)
 
 ## apt
 
@@ -69,6 +63,10 @@ pip3 install geoip2 flask  # optional
 Now 'git clone' this repo and run `./spy.py`
 
 _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_ip](https://github.com/osvenskan/sysv_ipc)_
+
+## docker
+
+Alternatively pyspy will also be part of [docker-glftpd](https://github.com/silv3rr/docker-glftpd)'s web interface soon(tm) which offers a complete gl install.
 
 ## Configuration
 
