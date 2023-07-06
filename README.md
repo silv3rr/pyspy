@@ -4,29 +4,46 @@
 
 ## /spai.pai/
 
-Shows users logged into glftpd in a terminal or as web page. Like 'gl_spy' and also 'webspy' from foo-tools.
+Shows users logged into glftpd either in a terminal window or as web page. Like 'gl_spy' and also simular to 'webspy' from foo-tools. Used to be included with [pywho](https://github.com/silv3rr/pywho) but is now its own separate thing.
 
-[screenshot_1](docs/pyspy1.png)
+_cli mode_
+![screenshot_cli](docs/cli.png)
 
-Used to be included with [pywho](https://github.com/silv3rr/pywho) but is now its own separate thing.
+_web mode_
+![screenshot_web](docs/web.png)
 
-Part of [docker-glftpd](https://github.com/silv3rr/docker-glftpd)'s web interface.
+Here's some more [more screenshots](docs/Screenshots.md) and asciinema [demo](docs/Demo.md).
 
+But wait, ppl cry.. "why is this stupid python! It will be impossible for me to use". Well, there's convenient binaries available for you. No messing about with annoying things like special python version 3.12.3.4, modules and virtual env's. Just copy the binary and run `spy.py`, done.
+
+Alternatively there will be docker image and pyspy will also be part of [docker-glftpd](https://github.com/silv3rr/docker-glftpd)'s web interface which offers a complete gl install.
 
 ## Usage
 
 Running `./spy` without args starts `--cli` mode (default)
 
 ``` bash
-./spy --web     # run webspy using flask (css, templates & js)
-./spy --httpd   # run webspy using built in httpd (basic)
+./spy --web     # web mode: run webspy using flask (css, templates & js)
+./spy --httpd   # run basic webspy using built in httpd
 ```
 
 ## Installation
 
 Only latest glftpd version 2.12+ is supported (other versions untested)
 
-Pick one of these 3 setup methods
+Pick one of these setup methods
+
+## binaries
+
+No dependencies, just single executable file available to [download](../../releases).
+
+Supported: CentOS 7, Debian 11, 12 and Ubuntu 20.04, 22.04
+
+All files on [Releases](../../releases) tab
+
+## docker
+
+...
 
 ## apt
 
@@ -51,23 +68,13 @@ Now 'git clone' this repo and run `./spy.py`
 
 _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_ip](https://github.com/osvenskan/sysv_ipc)_
 
-## binaries
-
-[![Build pyspy](https://github.com/silv3rr/pyspy/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pyspy/actions/workflows/build.yml)
-
-If you do not want to install python modules, there's also a single executable file available for [download](../../releases).
-
-Supported: CentOS 7, Debian 11, 12 and Ubuntu 20.04, 22.04
-
-Goto [Releases](../../releases) tab for all files
-
 ## Configuration
 
-To set gl paths, theme for cli mode, web server ip/port etc edit 'spy.conf'.
+To set gl path, color and refresh for cli, web ip/port etc edit 'spy.conf'. By default, web mode uses 127.0.0.1:5000.
 
 All options are explained at the bottom of conf. Make sure 'ipc_key' matches glftpd.
 
-To change how flask webspy looks, edit static/style.css and templates/*.html 
+To change how flask webspy looks, you can edit static/style.css and html in templates dir.
 
 ## Build
 
