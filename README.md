@@ -7,9 +7,11 @@
 Shows users logged into glftpd either in a terminal window or as web page. Like 'gl_spy' and also simular to 'webspy' from foo-tools. Used to be included with [pywho](https://github.com/silv3rr/pywho) but is now its own separate thing.
 
 _cli mode_
+
 ![screenshot_cli](docs/cli.png)
 
 _web mode_
+
 ![screenshot_web](docs/web.png)
 
 Here's some more [more screenshots](docs/Screenshots.md) and asciinema [demo](docs/Demo.md).
@@ -43,7 +45,7 @@ All files on [Releases](../../releases) tab
 
 ## docker
 
-...
+pyspy will be added to [docker-glftpd](https://github.com/silv3rr/docker-glftpd) soon(tm)
 
 ## apt
 

@@ -114,7 +114,7 @@ if [ "$PYINSTALLER" -eq 1 ]; then
       ls -la dist/spy
       if [ "$PACK" -eq 1 ]; then
         . /etc/os-release
-        PACKNAME="pyspy-${ID:-linux}${VERSION_ID}-python${PYVER:-3}-x86_x64"
+        PACKNAME="slv-pyspy-${ID:-linux}${VERSION_ID}-python${PYVER:-3}-x86_x64"
         printf "Creating %s.tar.gz...\n" "$PACKNAME"
         tar -C ./dist -cvf "${PACKNAME}.tar.gz" spy >/dev/null &&
           sha512sum "${PACKNAME}.tar.gz" >"${PACKNAME}.sha512sum" && echo "shasum: OK" || echo "ERROR: shasum"
