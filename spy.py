@@ -291,6 +291,11 @@ class User:
     idlers = IDLERS
     geoip2_client = GEOIP2_CLIENT if GEOIP2_CLIENT else None
     geoip2_shown_err = False
+    tls_mode = [
+        'None',       # no ssl
+        'Control',    # ssl on control
+        'Both'        # ssl on control and data
+    ]
 
     def __init__(self, user_tuple, online=0):
         self.user_tuple = user_tuple
@@ -699,11 +704,6 @@ def cli_dialog(title, text):
 def cli_user_info(users, u_idx, user_cache=[]) -> list:
     """ show formatted user details from login and userifle """
     theme = Theme()
-    tls_mode = [
-        'None',       # no ssl
-        'Control',    # ssl on control
-        'Both'        # ssl on control and data
-    ]
     mcol_title = theme.max_col+8 if color else theme.max_col
     i = 0
     print(theme.header)
@@ -715,14 +715,15 @@ def cli_user_info(users, u_idx, user_cache=[]) -> list:
     print(theme.spacer)
     if users[u_idx].get('procid'):
         ssl_flag = users[u_idx].get('ssl_flag')
-        ssl_msg = tls_mode[ssl_flag] if ssl_flag in range(0, len(tls_mode)) else 'UNKNOWN'
+        ssl_msg = User.tls_mode[ssl_flag] if ssl_flag in range(0, len(User.tls_mode)) else 'UNKNOWN'
         ip = users[u_idx].ip
         iso_code  = None
-        for l in users, user_cache:
-            if u_idx in range(0, len(l)):
+        try:
+            iso_code = users[u_idx].iso_code
+        except AttributeError:
+            if u_idx in range(0, len(user_cache)) and users[u_idx].get('procid') == user_cache[u_idx].get('procid'):
                 try:
-                    iso_code = l[u_idx].iso_code
-                    break
+                    iso_code = user_cache[u_idx].iso_code
                 except AttributeError:
                     pass
         last_dl = '{:.1f}GB'.format(round(int(users[u_idx].get_bytes_txfer()) / 1024**3, 1))
@@ -970,6 +971,7 @@ def set_stats(user):
     tstop_tv_sec = calendar.timegm(time.gmtime())
     tstop_tv_usec = datetime.datetime.now().microsecond
     user.speed = 0
+    user.fmt_status = ""
 
     # get filename
     if len(user.get('status')) > 4 and not user.get('status')[4:].startswith('-'):
