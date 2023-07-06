@@ -338,8 +338,16 @@ class User:
         return self.get('bytes_txfer2') * pow(2, 32) + self.get('bytes_txfer1')
 
     def get_mb_xfered(self) -> int:
-        """ convert uploaded bytes to mb """
+        """ convert tranfered bytes to mb """
         return (abs(self.get_bytes_xfer() / 1024 / 1024)) if self.get_bytes_xfer() else 0
+
+    def get_traf_dir(self) -> str:
+        """ traffic direction """
+        if self.get_bytes_xfer():
+            if self.get('status')[:4] == 'RETR':
+                return "Dn"
+            if self.get('status')[:4] == 'STOR' or self.get('status')[:4] == 'APPE':
+                return "Up"
 
     def get(self, attr):
         """ get attributes from tuple """
@@ -972,8 +980,7 @@ def set_stats(user):
         except geoip2.errors.GeoIP2Error:
             user.iso_code = None
     # ul speed
-    if (user.get('status')[:4] == 'STOR' or user.get('status')[:4] == 'APPE') and user.get_bytes_xfer():
-        traf_dir = "Up"
+    if user.get_traf_dir() == "Up":
         user.speed = abs(
             user.get_bytes_xfer() / 1024 / ((tstop_tv_sec - user.get('tstart_tv_sec')) +
             (tstop_tv_usec - user.get('tstart_tv_usec')) / 1000000)
@@ -987,8 +994,7 @@ def set_stats(user):
         user.pct = -1
         user.p_bar = '?->'
     # dn speed
-    elif user.get('status')[:4] == 'RETR' and user.get_bytes_xfer():
-        traf_dir = "Dn"
+    elif user.get_traf_dir() == "Dn":
         realfile = user.get('currentdir')
         user.filesize = get_filesize(realfile)
         if user.filesize < user.get_bytes_xfer():
@@ -1018,18 +1024,18 @@ def set_stats(user):
             if FLASK_MODE:
                 flask.session['idlers'] += 1
             else:
-                if FLASK_MODE:
-                    flask.session['browsers'] += 1
-                else:
-                    User.browsers += 1
-        user.status = 'Idle: {:>8.8}'.format(get_idle(seconds))
+                User.idlers += 1
+        else:
+            if FLASK_MODE:
+                flask.session['browsers'] += 1
+            else:
+                User.browsers += 1
+        user.fmt_status = 'Idle: {:>8.8}'.format(get_idle(seconds))
 
     user.online = get_idle(tstop_tv_sec - user.get('login_time'))
 
-    # format Up/Dn speed to KiB/s MiB/s GiB/s
-    if user.get_bytes_xfer() and traf_dir in ["Up", "Dn"]:
-        if not mask:
-            user.status = '{}:{:2.2s}{}{}'.format(traf_dir, ' ', *conv_speed(user.speed))
+    if user.get_traf_dir() in ["Up", "Dn"]:
+        user.fmt_status = '{}:{:2.2s}{}{}'.format(user.get_traf_dir(), ' ', *conv_speed(user.speed))
 
     return user
 
@@ -1149,32 +1155,29 @@ def cli_mainloop():
                 if CLI_SEARCH and search_user != "" and search_user not in user.name:
                     continue
                 if not user.pct and not user.p_bar:
-                    spy_pct = ''
+                    cli_pct = ''
                 else:
-                    spy_pct = f"{user.pct:>.0f}%"
+                    cli_pct = f"{user.pct:>.0f}%"
 
                 if theme.columns > 80:
-                    spy_stat= f"{user.get('currentdir').replace('/site', ''):<22.22}"
+                    cli_path= f"{user.get('currentdir').replace('/site', ''):<22.22}"
                 else:
-                    spy_stat = f'{user.filename}'
+                    cli_path = f'{user.filename}'
 
-                info_spy = f'{spy_pct + " " if spy_pct else ""}{spy_stat}'
+                if user.get_traf_dir() == "Up":
+                    cli_info = cli_path
+                else:
+                    cli_info = f'{cli_pct + " " if cli_pct else ""}{cli_path}'
 
                 menu_selector = f"{Color('w,k')} "
                 if user_scroll == u_idx:
                     menu_selector = f"{Color('k,w')} " if color else ">"
 
                 col = len(theme.fill) - 62 if len(theme.fill) > 0 else 18
-                if user.mb_xfered:
-                    print("{vrchar} [{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {spy_stat:{col}.{col}}{vrchar}{rst}".format(
-                        vrchar=Theme.vrchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.status,
-                        spy_stat=spy_stat, col=col, rst=Style('r')
-                    ))
-                else:
-                    print("{vrchar}{ms}[{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {info_spy:{col}.{col}}{vrchar}{rst}".format(
-                    ms=menu_selector, vrchar=Theme.vrchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.status,
-                        info_spy=info_spy, col=col, rst=Style('r')
-                    ))
+                print("{vrchar}{ms}[{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {cli_info:{col}.{col}}{vrchar}{rst}".format(
+                    ms=menu_selector, vrchar=Theme.vrchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.fmt_status,
+                    cli_info=cli_info, col=col, rst=Style('r')
+                ))
 
                 u_idx += 1
 
