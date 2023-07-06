@@ -31,6 +31,7 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
+          ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
       - uses: actions/upload-artifact@v3
         with:
           name: build-ubuntu-artifacts
@@ -98,10 +99,7 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh  && mkdir ./build-centos && mv -f *.tar.gz *.sha512sum ./build-centos
-          # git config --global user.name "${{ env.GIT_USER_NAME }}"
-          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
-          # git pull && git add bin && git commit -m "update centos binary" && git push
+          ./build.sh && mkdir ./build-centos && mv -f *.tar.gz *.sha512sum ./build-centos
       - uses: actions/upload-artifact@v2
         with:
           name: build-centos-artifacts
