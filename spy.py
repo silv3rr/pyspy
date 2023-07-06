@@ -48,7 +48,7 @@ if _WITH_GEOIP:
 VERSION = "20230705"
 
 SCRIPT_PATH = os.path.abspath(__file__) if os.path.abspath(__file__) else os.path.realpath(sys.argv[0])
-# pyinstaller
+# pyinstaller path
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     SCRIPT_PATH = os.path.realpath(sys.argv[0])
 SCRIPT = os.path.basename(sys.argv[0])
@@ -130,13 +130,9 @@ if len(config_errors) > 0:
 
 try:
     glrootpath = config['DEFAULT']['glrootpath']
-    husers = config.get('DEFAULT', 'hiddenusers', fallback='')
-    hgroups = config.get('DEFAULT', 'hiddengroups', fallback='')
-    mpaths = config.get('DEFAULT', 'maskeddirectories', fallback='')
     ipc_key = config.get('DEFAULT', 'ipc_key', fallback='')
     maxusers = config.getint('DEFAULT', 'maxusers', fallback=20)
     nocase = config.getboolean('DEFAULT', 'case_insensitive', fallback=False)
-    count_hidden = config.getboolean('DEFAULT', 'count_hidden', fallback=True)
     idle_barrier = config.getint('DEFAULT', 'idle_barrier', fallback=30)
     threshold = config.getint('DEFAULT', 'speed_threshold', fallback=1024)
     refresh  = config.getfloat('DEFAULT', 'refresh', fallback=1)
@@ -154,7 +150,6 @@ except (KeyError, configparser.InterpolationError) as conf_err:
     print(f'Error: check config file\n{conf_err}')
     sys.exit(1)
 
-CHIDDEN = 1 if count_hidden else 0
 MAXUSERS = maxusers if maxusers else 0
 THRESHOLD = threshold if threshold else 0
 IDLE_BARRIER = idle_barrier if idle_barrier else 0
@@ -285,7 +280,7 @@ if _WITH_GEOIP and GEOIP2_ENABLE:
 ###########
 
 class User:
-    """ user, stats, with struct as namedtuple """
+    """ user struct as namedtuple and calc stats """
     uploads = UPLOADS
     downloads = DOWNLOADS
     total = 0
@@ -966,28 +961,11 @@ def set_stats(user):
     """ adds user statistics to object and summed totals as class var """
     tstop_tv_sec = calendar.timegm(time.gmtime())
     tstop_tv_usec = datetime.datetime.now().microsecond
-    traf_dir = None
-    mask = noshow = 0
-    maskchar = " "
     user.speed = 0
 
     # get filename
     if len(user.get('status')) > 4 and not user.get('status')[4:].startswith('-'):
         user.filename = user.get('status')[5:]
-    # check if user in hidden users/groups
-    if ((nocase and ((user.name.lower() in husers.lower()) or (user.group.lower() in hgroups.lower()))) or
-            ((user.name in husers) or (user.group in hgroups))):
-        if SHOWALL:
-            maskchar = '*'
-        else:
-            noshow += 1
-    # get currentdir
-    if noshow == 0 and mpaths:
-        if ((maskchar == '') and (user.get('currentdir') in mpaths.split(' ') or (f"{user.get('currentdir')}/" in mpaths.split(' ')))):
-            if SHOWALL:
-                maskchar = '*'
-            else:
-                mask += 1
     if _WITH_GEOIP and GEOIP2_ENABLE:
         try:
             (User.geoip2_client, user.iso_code, User.geoip2_shown_err) = get_geocode(User.geoip2_client, user.ip, User.geoip2_shown_err)
@@ -1000,16 +978,14 @@ def set_stats(user):
             user.get_bytes_xfer() / 1024 / ((tstop_tv_sec - user.get('tstart_tv_sec')) +
             (tstop_tv_usec - user.get('tstart_tv_usec')) / 1000000)
         )
-        if (not noshow and not mask and maskchar != '*') or CHIDDEN:
-            if FLASK_MODE:
-                flask.session['total_up_speed'] += user.speed
-                flask.session['uploads'] += 1
-            else:
-                User.total_up_speed += user.speed
-                User.uploads += 1
-        if not mask:
-            user.pct = -1
-            user.p_bar = '?->'
+        if FLASK_MODE:
+            flask.session['total_up_speed'] += user.speed
+            flask.session['uploads'] += 1
+        else:
+            User.total_up_speed += user.speed
+            User.uploads += 1
+        user.pct = -1
+        user.p_bar = '?->'
     # dn speed
     elif user.get('status')[:4] == 'RETR' and user.get_bytes_xfer():
         traf_dir = "Dn"
@@ -1027,24 +1003,20 @@ def set_stats(user):
            user.get_bytes_xfer() / 1024 / ((tstop_tv_sec - user.get('tstart_tv_sec')) +
                 (tstop_tv_usec - user.get('tstart_tv_usec')) / 1000000)
         )
-        if (not noshow and not mask and maskchar != '*') or CHIDDEN:
-            if FLASK_MODE:
-                flask.session['total_dn_speed'] += user.speed
-                flask.session['downloads'] += 1
-            else:
-                User.total_dn_speed += user.speed
-                User.downloads += 1
+        if FLASK_MODE:
+            flask.session['total_dn_speed'] += user.speed
+            flask.session['downloads'] += 1
+        else:
+            User.total_dn_speed += user.speed
+            User.downloads += 1
     # idle time
     else:
         user.p_bar = user.filename = ""
         user.pct = 0
         seconds = tstop_tv_sec - user.get('tstart_tv_sec')
-        if ((not noshow and not mask and maskchar != '*') and CHIDDEN):
-            if seconds > IDLE_BARRIER:
-                if FLASK_MODE:
-                    flask.session['idlers'] += 1
-                else:
-                    User.idlers += 1
+        if seconds > IDLE_BARRIER:
+            if FLASK_MODE:
+                flask.session['idlers'] += 1
             else:
                 if FLASK_MODE:
                     flask.session['browsers'] += 1
