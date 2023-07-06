@@ -1,0 +1,31 @@
+name: Docker build and push
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - '**'
+      - '!.github/**'
+      - '!.gitignore'
+      - '!README.md'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  docker-images:
+    name: Build Docker images and push to repositories
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Build images
+        run: docker build --tag pyspy:latest .
+      - name: Login to Github Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+      - name: Push image
+        run: |
+          docker push ghcr.io/silv3rr/pyspy:latest
