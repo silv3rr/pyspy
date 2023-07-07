@@ -231,20 +231,21 @@ for gl_udir_name in [f"{glrootpath}/ftp-data/users", "/ftp-data/users"]:
         USERS_DIR=gl_udir_name
         break
 
-# set global var for totalusers, use spy.cfg or glconf's maxusers
-glconf_max = 0
+# set global var for totalusers, use spy.conf or glftpd.conf's maxusers
+glconf_maxusers = 0
 for glconf_fn in [f'{glrootpath}/../glftpd.conf', f'{glrootpath}/glftpd.conf', '/etc/glftpd.conf']:
     try:
         with open(glconf_fn, 'r', encoding='utf-8', errors='ignore') as glconf_obj:
             for glconf_line in glconf_obj.readlines():
                 if re.search(r'^max_users \d', glconf_line):
                     for mu_cnt in glconf_line.split()[1:]:
-                        glconf_max += int(mu_cnt)
+                        glconf_maxusers += int(mu_cnt)
                     break
     except IOError:
         pass
-if MAXUSERS == -1 and glconf_max > 0:
-    TOTALUSERS = glconf_max
+TOTALUSERS = 0
+if MAXUSERS == -1 and glconf_maxusers > 0:
+    TOTALUSERS = glconf_maxusers
 else:
     TOTALUSERS = maxusers
 
@@ -1334,6 +1335,7 @@ def create_app() -> object:
                 users = users,
                 glftpd_version = GL_VER,
                 spy_version = SPY_VERSTR,
+                totalusers = TOTALUSERS,
                 sort_attr = sort_attr,
                 sort_rev = flask.request.args.get('sort_rev', default=False, type=bool),
                 uniq_attr = flask.request.args.get('uniq_attr', default=None, type=str),
