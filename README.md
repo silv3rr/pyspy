@@ -16,7 +16,7 @@ _web mode_
 
 Here's some more [more screenshots](docs/Screenshots.md) and a quick [demo](docs/Demo.md) clip.
 
-But wait, ppl cry.. "why is this stupid python! It will be impossible for me to use". Well, there's convenient binaries available for you. No messing about with annoying things like special python version 3.12.3.4, modules and virtual env's. Just copy the binary and run `spy.py`, done.
+"But wait", ppl cry.. "why is this stupid python! It will be impossible for me to use". Well, there's convenient binaries available for you. No messing about with annoying things like special python version 3.12.3.4, modules and virtual env's. Just copy the binary and run `spy.py`, done.
 
 ## Usage
 
@@ -37,7 +37,7 @@ Pick one of these 3 setup methods
 
 No dependencies, just single executable file available to [download](../../releases).
 
-Supported: CentOS 7, Debian 11, 12 and Ubuntu 20.04, 22.04
+Supported: CentOS 7, Debian 10, 11, 12 and Ubuntu 20.04, 22.04
 
 All files on [Releases](../../releases) tab. Click **Show all .. assets** link at the bottom.
 
