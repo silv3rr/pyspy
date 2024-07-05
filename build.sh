@@ -17,6 +17,10 @@ REQS="$(cut -d= -f1 requirements.txt 2>/dev/null)"
 ARGS="--hidden-import sysv_ipc"
 OPTS="_WITH_SPY _WITH_GEOIP _WITH_HTTPD _WITH_FLASK"
 
+if [ "${WEBSPY:-0}" -eq 1 ]; then
+  ARGS=" $ARGS --add-data webspy:. "
+fi
+
 if [ ! -s requirements.txt ] || [ -z "$REQS" ]; then
   echo "WARNING: missing requirements"
 fi
@@ -70,11 +74,11 @@ command -V python3 || {
 
 PYVER="$(python3 --version | sed 's/.* \([0-9]\.[0-9]\{1,2\}\).*/\1/' | grep -E '^[0-9.]+$' || echo 0)"
 PYVER_OK=0
-if command -V bc >/dev/null 2>&1; then
-  if [ "$(echo "$PYVER >= $PYREQVER" | bc)" -eq 1 ]; then
-    PYVER_OK=1
-  fi
-else
+#if command -V bc >/dev/null 2>&1; then
+#  if [ "$(echo "$PYVER >= $PYREQVER" | bc)" -eq 1 ]; then
+#    PYVER_OK=1
+#  fi
+#else
   PYVER_MAY="$(echo "$PYVER" | sed 's/\([0-9]\)\.[0-9]/\1/')"
   PYVER_MIN="$(echo "$PYVER" | sed 's/[0-9]\.\([0-9]\+\)/\1/')"
   PYREQVER_MAY="$(echo $PYREQVER | sed 's/\([0-9]\)\.[0-9]/\1/')"
@@ -84,7 +88,7 @@ else
   elif [ "$PYVER_MAY" -eq "$PYREQVER_MAY" ] && [ "$PYVER_MIN" -ge "$PYREQVER_MIN" ]; then
     PYVER_OK=1
   fi
-fi
+#fi
 if [ "$PYVER_OK" -eq 1 ]; then
   echo "python version is OK (need Python ${PYREQVER}+ got v${PYVER})"
 else
@@ -93,7 +97,7 @@ fi
 
 ECNT=0
 for i in $REQS; do
-  PKG="$( echo $i | tr '_' '-' )"
+  PKG="$( echo "$i" | tr '_' '-' )"
   printf "%b\n" 'try:\n  import '"${i}"'\nexcept:\n  exit(1)' | python3 || {
     echo "Module '${i}' not found, try 'apt install python3-${PKG}' or 'pip install ${PKG}'"
     ECNT=$((ECNT + 1))
