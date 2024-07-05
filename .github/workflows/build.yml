@@ -111,7 +111,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - rhel-distro: amalinux
+          - rhel-distro: armalinux
             rhel-version: 9.4
           - rhel-distro: rockylinux
             rhel-version: 9.3
