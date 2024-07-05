@@ -3,8 +3,15 @@ backup/
 dist/
 build/
 tmp/
+test/
 *.bak
 spy
+*.new
+*.old
+*.orig
+*.spec
+*.tar.gz
+*.sha512sum
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -136,9 +143,3 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-*.new
-*.old
-*.orig
-*.spec
-*.tar.gz
-*.sha512sum
