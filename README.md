@@ -37,7 +37,8 @@ Pick one of these 3 setup methods
 
 No dependencies, just single executable file available to [download](../../releases).
 
-Supported: CentOS 7, Debian 10, 11, 12 and Ubuntu 20.04, 22.04
+Supported: Debian 10, 11, 12 and Ubuntu 20.04, 22.04, 24.04, Almalinux 9.3, Rockylinux 9.3
+EOL: [CentOS 7](https://github.com/silv3rr/pyspy/releases/download/slv-pyspy-v20230708/pyspy-centos7-python3.6-x86_x64.tar.gz)
 
 All files on [Releases](../../releases) tab. Click **Show all .. assets** link at the bottom.
 
