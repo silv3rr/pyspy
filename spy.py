@@ -1365,6 +1365,7 @@ def create_app() -> object:
                 return [f"{status}"], 500
             elif status == "UserNotFound":
                 return [f"{status}"], 404
+            return ["Unknown"], 500
         @app.route('/kick/<username>')
         def kick(username):
             r = kill_procid(username, get_users())

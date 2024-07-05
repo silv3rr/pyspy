@@ -1,8 +1,8 @@
 var timeout_id
 const debug = false;
-const div_users = document.getElementById("include_users");
-const div_totals = document.getElementById("include_totals");
-const div_response = document.getElementById("api_result");
+const div_users = document.getElementById("include_spy_users");
+const div_totals = document.getElementById("include_spy_totals");
+const div_response = document.getElementById("spy_api_result");
 const url_users = {{ url_for('webspy', route='users') | tojson }};
 const url_totals = {{ url_for('webspy', route='totals') | tojson }};
 
@@ -10,8 +10,9 @@ function set_norefresh() {
     clearTimeout(timeout_id)
     document.getElementById('show_info').innerText = ('autorefresh: off (reload page to re-enable)');
 }
+
 function api_call(endpoint, username) {
-    fetch(encodeURI(`/${endpoint}/${username}`), {
+    fetch(encodeURI(`${endpoint}/${username}`), {
         method: "GET",
     })
     .then(response => response.json())
@@ -36,17 +37,11 @@ if (el && p == "") {
     el.checked = false;
 } else if (el && p == "True") {
     el.checked = true;
-}  
+}
+
 (function loop() {
     timeout_id = window.setTimeout(() => {
         let spy_params = new URLSearchParams(window.location.search);
-        fetch(encodeURI(`${url_users}?${spy_params}`), {
-            method: "GET",
-        })
-        .then(response => response.text())
-        .then(text => {
-            div_users.innerHTML = text  ;
-        })
         fetch(encodeURI(`${url_users}?${spy_params}`), {
             method: "GET",
         })
@@ -65,10 +60,11 @@ if (el && p == "") {
     }, 1000);
 })()
 if (debug) {
-    console.log('interval_id after', interval_id)
+    console.log(`post loop interval_id={interval_id}`)
 }
 const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
 toggleSwitch.addEventListener('change', switchTheme, false);
+
 function switchTheme(e) {
     if (e.target.checked) {
         document.documentElement.setAttribute('data-theme', 'dark');

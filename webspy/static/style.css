@@ -79,7 +79,7 @@ a:link, a:visited, a:hover, a:active {
 }
 .settings table {
     width: max-content;
-    height: max-content;    
+    height: max-content;
     border-color: gray;
     border-style: double;
     border-width: 4px;
@@ -146,7 +146,7 @@ a:link, a:visited, a:hover, a:active {
 .totals #date {
     margin-left: 100%;
 }
-#api_result {
+#spy_api_result {
     display: none;
     color: white;
     font-size: 1em;
@@ -279,7 +279,7 @@ a:link, a:visited, a:hover, a:active {
 }
 */
 
-/*  dark theme 
+/*  dark theme
     https://dev.to/ananyaneogi/create-a-dark-light-mode-switch-with-css-variables-34l8 */
 
 :root {
@@ -304,7 +304,7 @@ a:link, a:visited, a:hover, a:active {
     /* --font-color: #e1e1ff; */
     --font-color: #929292;
     --bg-color: #161625;
-    --heading-color: #818cab;    
+    --heading-color: #818cab;
 }
 [data-theme='dark'] .settings thead {
     color: lightgray

@@ -39,7 +39,7 @@
                         <td>
                             <form>
                                 <div>
-                                    <input id="search" type="textfield" name="search" size=28 placeholder="search user, group, host, ip..."></input>
+                                    <input id="search" type="textfield" name="search" size=28 placeholder="search user, group, host, ip..."/>
                                 </div>
                                 <select id="sort_attr" name="sort_attr" >
                                     <option value="" selected>sort by...</option>
@@ -71,10 +71,10 @@
                 </tbody>
             </table>
         </div>
-        <div id="include_totals" class="totals">
+        <div id="include_spy_totals" class="totals">
             {% include 'totals.html' %}
         </div>
-        <div id="api_result"></div>
+        <div id="spy_api_result"></div>
         <div class="who">
             <span id="show_info">
                 {%- if not error %}
@@ -100,15 +100,15 @@
                 <span id="bartext" style="display:inline-block">No logged in users users found..</span>
             {% else -%}
                 <span id="bartext">
-                    <img src="{{ url_for('static', filename='pirate_icon_138281.svg') }}"> Online users
+                    <img src="{{ url_for('static', filename='g138281.svg') }}"> Online users
                 </span>
             {% endif %}
         </div>
         <div class="row">
-            <div id="include_users" class="users">
+            <div id="include_spy_users" class="users">
                 {% include 'users.html' %}
             </div>
-            <script type="text/javascript" src="{{ url_for('spy_js') }}"></script>
         </div>
+        <script type="text/javascript" src="{{ url_for('spy_js') }}"></script>
     </body>
 </html>
