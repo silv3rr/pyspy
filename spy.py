@@ -23,9 +23,6 @@ import sys
 import socket
 import calendar
 import collections
-import signal
-import select
-import tty
 import subprocess
 import sysv_ipc
 
@@ -33,6 +30,8 @@ import sysv_ipc
 _WITH_GEOIP = False
 _WITH_HTTPD = True
 _WITH_FLASK = True
+
+PYINSTALLER = False
 
 if _WITH_HTTPD:
     import http.server
@@ -45,17 +44,17 @@ if _WITH_FLASK:
 if _WITH_GEOIP:
     import geoip2.webservice
 
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    PYINSTALLER = True
+
 VERSION = "20230705"
 
 SCRIPT_PATH = os.path.abspath(__file__) if os.path.abspath(__file__) else os.path.realpath(sys.argv[0])
-# pyinstaller path
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+if PYINSTALLER:
     SCRIPT_PATH = os.path.realpath(sys.argv[0])
 SCRIPT = os.path.basename(sys.argv[0])
 SCRIPT_NAME = os.path.splitext(SCRIPT)[0]
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
-TTY_SETTINGS = tty.tcgetattr(sys.stdin)
-
 UPLOADS = DOWNLOADS = 0
 TOTAL_UP_SPEED = TOTAL_DN_SPEED = 0
 ONLINEUSERS = BROWSERS = IDLERS = 0
@@ -63,8 +62,10 @@ SHOWALL = 0
 GEOIP2_BUF = {}
 GEOIP2_CLIENT = None
 
+CLI_MODE = 1
 HTTPD_MODE = 0
 FLASK_MODE = 0
+FLASK_PROXY= False
 CLI_SEARCH = 0  # search username in list, not that usefull - disabled by default
 
 SPY_VERSTR = f"spy-{VERSION}"
@@ -87,10 +88,13 @@ elif '-v' in sys.argv or '--version' in sys.argv:
     sys.exit(0)
 elif len(sys.argv) > 1 and len(sys.argv[1]) in [5, 7]:
     if '--cli' in sys.argv or '--spy' in sys.argv:
+        CLI_MODE = 1
         print('No need specify spy/cli mode as its the default')
     elif _WITH_HTTPD and sys.argv[1] == '--httpd':
+        CLI_MODE = 0
         HTTPD_MODE = 1
     elif _WITH_FLASK and ('--web' in sys.argv or '--flask' in sys.argv):
+        CLI_MODE = 0
         FLASK_MODE = 1
     else:
         sys.exit(0)
@@ -155,19 +159,34 @@ THRESHOLD = threshold if threshold else 0
 IDLE_BARRIER = idle_barrier if idle_barrier else 0
 GEOIP2_ENABLE = geoip2_enable if geoip2_enable else False
 REFRESH = refresh if refresh else 1
+DEBUG = debug if debug else 0
+
+if CLI_MODE:
+    import signal
+    import select
+    import tty
+    TTY_SETTINGS = tty.tcgetattr(sys.stdin)
 
 if _WITH_FLASK:
     FLASK_OPTIONS = {}
     FLASK_OPTIONS['host'] = flask_host
     FLASK_OPTIONS['port'] = flask_port
     # flask dev mode
-    if os.getenv("FLASK_DEBUG") == 1:
+    if os.getenv("FLASK_DEBUG") == '1' or DEBUG > 1:
         FLASK_OPTIONS['debug'] = True
-    if os.getenv("FLASK_THREADED") == 1:
+    if os.getenv("FLASK_THREADED") == '1':
         FLASK_OPTIONS['threaded'] = False
+    if os.getenv("FLASK_PROXY") == '1':
+        FLASK_PROXY = True
 
 if _WITH_HTTPD:
     HTTPD_OPTIONS = (httpd_host, httpd_port)
+
+if FLASK_PROXY:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+
+if PYINSTALLER:
+    FLASK_OPTIONS['debug'] = False
 
 
 # glftpd data
@@ -177,7 +196,7 @@ if _WITH_HTTPD:
 IPC_KEY = ipc_key if ipc_key else "0x0000DEAD"
 KEY = int(IPC_KEY, 16)
 NULL_CHAR = b'\x00'
-if debug > 3:
+if DEBUG > 3:
     print(
         f'DEBUG:\tIPC_KEY={IPC_KEY} KEY={KEY} sysv_ipc.SHM_RDONLY={sysv_ipc.SHM_RDONLY}\n',
         f'\tfmt = {KEY:#010x}', id(KEY)
@@ -281,7 +300,7 @@ if _WITH_GEOIP and GEOIP2_ENABLE:
 ###########
 
 class User:
-    """ user struct as namedtuple and calc stats """
+    """ user struct as namedtuple, calc stats """
     uploads = UPLOADS
     downloads = DOWNLOADS
     total = 0
@@ -358,7 +377,7 @@ class User:
     def get(self, attr):
         """ get attributes from tuple """
         r = getattr(self.user_tuple, attr)
-        if debug > 1:
+        if DEBUG > 1:
             print(f'DEBUG: user.get() attr={attr} type={type(r)}')
         if isinstance(r, bytes):
             return r.split(NULL_CHAR, 1)[0].decode()
@@ -434,6 +453,7 @@ class Style:
 
 class Color:
     """ return color code or empty string if color is off """
+    """ use UPPERCASE code for bright colors 0-7 """
     map = {
         'k':    0,      # black
         'r':    1,      # red
@@ -443,22 +463,23 @@ class Color:
         'm':    5,      # magenta
         'c':    6,      # cyan
         'w':    7,      # white
-        'd':    9       # default
-        #'K':    90,     # bright black (\x1b[90m)
-        #'R':    91,     # bright red
-        #'G':    92,     # bright green
-        #'Y':    93,     # bright yellow
-        #'B':    94,     # bright blue
-        #'M':    95,     # bright magenta
-        #'C':    96,     # bright cyan
-        #'W':    97,     # bright white
+        'd':    9,      # default
     }
     @staticmethod
-    def __new__(cls, c):
+    def __new__(cls, code):
         if color == 0:
             return ''
-        fg, bg = c.split(',')
-        return f'\x1b[{Color.map[fg]+30};{Color.map[bg]+40}m'
+        fg = bg = 'd'
+        try:
+            (fg, bg) = code.split(',')
+        except ValueError:
+            pass
+        return "{0}{1};{2}m".format(
+            '\x1b[',
+            f'{Color.map[fg] + 30}' if fg.islower() else f'{Color.map[fg.lower()] + 90}',
+            f'{Color.map[bg] + 40}' if bg.islower() else f'{Color.map[bg.lower()] + 100}'
+        )
+
 
 class Theme:
     """ theme for cli mode """
@@ -467,7 +488,7 @@ class Theme:
     draw = {
         'h':  '\U00002500',     # horizontal -
         'v':  '\U00002502',     # vertical   |
-        'ul': '\U0000250C',     # up left 
+        'ul': '\U0000250C',     # up left
         'ur': '\U00002510',     # up right
         'dl': '\U00002514',     # down left  |_
         'dr': '\U00002518',     # down right _|
@@ -475,9 +496,10 @@ class Theme:
         'vr': '\U0000251C'      # vertical right |-
     }
 
-    maincolor = f"{Style('b')}{Color('k,k')}" # gray/black
+    maincolor = f"{Style('b')}{Color('k,d')}" # gray/black
+    logocolor = f"{Style('b')}{Color('m,d')}" # magenta
     delimiter = f"{maincolor}|{Style('r')}"   # pipe '|'
-    vrchar = f"{maincolor}{draw['v']}{Style('r')}"
+    vchar = f"{maincolor}{draw['v']}{Style('r')}"
 
     def __init__(self):
         self.columns = self.get_columns()
@@ -516,23 +538,23 @@ class Theme:
         draw = self.draw
         return "{mc}{dl}{hline}[{lc}PY-SPY{mc}]{h}{h}{h}{dr}{rst}".format(
             mc=self.maincolor, dl=draw['dl'], hline=draw['h']*(self.columns-20),
-            lc=f"{Style('b')}{Color('m,k')}", h=draw['h'], dr=draw['dr'], rst=Style('r')
+            lc=self.logocolor, h=draw['h'], dr=draw['dr'], rst=Style('r')
         )
 
     def fmt_spacer(self) -> str:
         """ format spacer  """
         # '| <~~~ space ~~~> |'
-        return "{v} {sp:<{col}.{col}} {v}".format(v=self.vrchar, sp=' ', col=self.max_col)
+        return "{v} {sp:<{col}.{col}} {v}".format(v=self.vchar, sp=' ', col=self.max_col)
 
     def fmt_uinfo_title(self, text, col) -> str:
         """ format title on userinfo screen """
         return "{v} {text:<{col}.{col}} {v}".format(
-            v=self.vrchar, text=f"{Style('u')}{text}{Style('r')}", col=col
+            v=self.vchar, text=f"{Style('u')}{text}{Style('r')}", col=col
         )
 
     def fmt_uinfo_line(self, text, col) -> str:
         """ format line on userinfo screen """
-        return "{v} {sp:>4.4}{text:<{col}.{col}} {v}".format(v=self.vrchar, sp=' ', text=text, col=col)
+        return "{v} {sp:>4.4}{text:<{col}.{col}} {v}".format(v=self.vchar, sp=' ', text=text, col=col)
 
 
 # functions
@@ -575,17 +597,17 @@ def get_geocode(client, userip, shown_err) -> list:
     """ get geoip2 country code for ip """
     iso_code = "xX"
     theme = Theme()
-    if debug > 0:
+    if DEBUG > 0:
         for prefix in ['127.', '10.', '172.16.1', '172.16.2', '172.16.3', '192.168.']:
             if userip.startswith(prefix):
-                if debug > 3:
+                if DEBUG > 3:
                     print(f'DEBUG: geoip2 MATCH "{prefix}" in "{userip}"')
                 return [client, 'DEBUG', shown_err]
     if GEOIP2_BUF.get(userip):
         iso_code = GEOIP2_BUF[userip]
     else:
         try:
-            if debug == 1:
+            if DEBUG == 1:
                 print(f'DEBUG: geoip2 "{userip}" not cached, GEOIP2_BUF="{GEOIP2_BUF}"')
             iso_code = client.country(userip).country.iso_code
             GEOIP2_BUF[userip] = iso_code
@@ -597,7 +619,7 @@ def get_geocode(client, userip, shown_err) -> list:
                 mcol = theme.max_col+8 if color else theme.max_col-8
                 if len(text) + 8 > mcol:
                     text = text[:73] + ' ...'
-                print("{0} {1:<{2}.{2}} {0}".format(Theme.vrchar, text, mcol))
+                print("{0} {1:<{2}.{2}} {0}".format(Theme.vchar, text, mcol))
                 print(theme.footer)
                 print(f"{Esc('2F')}", end="")
                 time.sleep(2.5)
@@ -703,7 +725,7 @@ def cli_dialog(title, text):
 
 
 def cli_user_info(users, u_idx, user_cache=[]) -> list:
-    """ show formatted user details from login and userifle """
+    """ show formatted user details from login and userfile """
     theme = Theme()
     mcol_title = theme.max_col+8 if color else theme.max_col
     i = 0
@@ -757,9 +779,8 @@ def cli_user_info(users, u_idx, user_cache=[]) -> list:
                     text = text[:61] + ' ...'
                 print(theme.fmt_uinfo_line(text, theme.max_col-4))
         else:
-            print("{0:<{1}.{1}}".format(
-                f" User '{users[u_idx].name}' not found...", theme.max_col+11)
-            )
+            text = f"User '{users[u_idx].name}' not found..."
+            print("{0} {1:<{2}.{2}} {0}".format(Theme.vchar, text, theme.max_col))
             time.sleep(2)
         while 23 + i < theme.lines:
             print(theme.spacer)
@@ -908,7 +929,7 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
     # action: scroll user list page down  (+5)
     elif user_action == 15:
         user_action = 0
-        screen_redraw  = 1
+        screen_redraw = 1
         user_scroll += 5
     # handle any other key presses
     elif user_action == 0 and len(key) > 0:
@@ -944,8 +965,10 @@ def get_userfile(u_name) -> dict:
                 if key != prev:
                     value = []
                 if line.startswith('CREDITS'):
-                    c = re.sub(r'^CREDITS ([^0]\d+).*', r'\1', line)
-                    value = f"{round(int(c) / 1024**2)}GB"
+                    value = 0
+                    c = (re.sub(r'^CREDITS [^0](\d+).*', r'\1', line)).strip()
+                    if isinstance(c, int) and c > 0:
+                        value = f"{round(int(c) / 1024**2)}GB"
                 else:
                     value.append(line.strip().split(' ')[1])
                 u_fields[key] = value
@@ -1108,7 +1131,7 @@ def cli_mainloop():
             print(f"{Esc('2J')}{Esc('H')}", end="")
             print(theme.header)
             print(theme.spacer)
-            print("{0} {1:<{2}.{2}} {0}".format(Theme.vrchar, text, theme.max_col+9))
+            print("{0} {1:<{2}.{2}} {0}".format(Theme.vchar, text, theme.max_col+9))
             print(theme.spacer)
             print(theme.footer)
             print()
@@ -1117,7 +1140,7 @@ def cli_mainloop():
             continue
         if repeat > 0 and user_action == 0:
             # print vars for debugging, sleep to be able to actualy view them
-            if debug > 4:
+            if DEBUG > 4:
                 print(f'DEBUG: cli vars user_action={user_action} screen_redraw={screen_redraw}')
                 time.sleep(2)
             if screen_redraw == 0:
@@ -1172,13 +1195,13 @@ def cli_mainloop():
                 else:
                     cli_info = f'{cli_pct + " " if cli_pct else ""}{cli_path}'
 
-                menu_selector = f"{Color('w,k')} "
+                menu_selector = " "
                 if user_scroll == u_idx:
                     menu_selector = f"{Color('k,w')} " if color else ">"
 
                 col = len(theme.fill) - 62 if len(theme.fill) > 0 else 18
-                print("{vrchar}{ms}[{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {cli_info:{col}.{col}}{vrchar}{rst}".format(
-                    ms=menu_selector, vrchar=Theme.vrchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.fmt_status,
+                print("{vchar}{ms}[{index:>2}] {username:16.16s}/{g_name:>10.10} {delimiter} {status:14.14s} {delimiter} {cli_info:{col}.{col}}{vchar}{rst}".format(
+                    ms=menu_selector, vchar=Theme.vchar, delimiter=Theme.delimiter, username=user.name, g_name=user.group, index=u_idx, status=user.fmt_status,
                     cli_info=cli_info, col=col, rst=Style('r')
                 ))
 
@@ -1210,14 +1233,14 @@ def cli_mainloop():
                 print(theme.spacer)
                 i += 1
             print(theme.separator)
-            print("{vrchar} Up: {uploads:>2} / {total_up_speed:6}{up_unit:5} {delimiter} Dn: {downloads:>2} / {total_dn_speed:6}{dn_unit:5} {delimiter} Total: {total:>2} / {total_speed:6}{total_unit:5} {fill}{vrchar}".format(
-                vrchar=Theme.vrchar, delimiter=Theme.delimiter,
+            print("{vchar} Up: {uploads:>2} / {total_up_speed:6}{up_unit:5} {delimiter} Dn: {downloads:>2} / {total_dn_speed:6}{dn_unit:5} {delimiter} Total: {total:>2} / {total_speed:6}{total_unit:5} {fill}{vchar}".format(
+                vchar=Theme.vchar, delimiter=Theme.delimiter,
                 uploads=users[0].uploads, total_up_speed=total_up_speed, up_unit=total_up_unit,
                 downloads=users[0].downloads, total_dn_speed=total_dn_speed, dn_unit=total_dn_unit,
                 total=users[0].total, total_speed=total_speed, total_unit=total_unit, fill=f'{" "*(theme.columns-80)}'
             ))
-            print("{vrchar} Currently {onlineusers:>3}{rb} of {maxusers:>3} users are online... {space:19} {curtime} {fill}{vrchar}".format(
-                vrchar=Theme.vrchar, space=' ', onlineusers=users[0].onlineusers, rb=Style('rb'), maxusers=TOTALUSERS, fill=f'{" "*(theme.columns-80)}',
+            print("{vchar} Currently {onlineusers:>3}{rb} of {maxusers:>3} users are online... {space:19} {curtime} {fill}{vchar}".format(
+                vchar=Theme.vchar, space=' ', onlineusers=users[0].onlineusers, rb=Style('rb'), maxusers=TOTALUSERS, fill=f'{" "*(theme.columns-80)}',
                 curtime = datetime.datetime.now().strftime("%T")
             ))
             print(theme.footer)
@@ -1275,13 +1298,16 @@ def format_html() -> str:
     """ return string with users/totals as html """
     html = "<h3>SPY.PY</h3><br>\n"
     users = []
-    for user in get_users():
-        users.append(set_stats(user))
+    try:
+        for user in get_users():
+            users.append(set_stats(user))
+    except RuntimeError:
+        return "No logged in users users found"
     for u in users:
         html += f"{u.name}/{u.group}<br>\n"
         html += f"tagline: {u.get('tagline')}<br>\n"
         html += f"host: ({u.get('host')})<br>\n"
-        html += f"status: {u.status}<br><br>\n\n"
+        html += f"status: {u.fmt_status}<br><br>\n\n"
     html += "<hr><br>\n"
     html += f"currently {str(User.onlineusers)} users of {MAXUSERS} users online<br>\n"
     html += f"up: {User.uploads} {conv_speed(User.total_up_speed)}, "
@@ -1294,26 +1320,33 @@ def format_html() -> str:
 def create_app() -> object:
     """ create flask app with routes """
     if _WITH_FLASK and FLASK_MODE == 1:
-        tmpl_path = os.path.join(SCRIPT_DIR, 'templates/')
-        static_path = os.path.join(SCRIPT_DIR, 'static/')
-        app = flask.Flask(__name__, template_folder=tmpl_path, static_folder=static_path)
+        tmpl_path = os.path.join(SCRIPT_DIR, 'webspy/templates/')
+        static_path = os.path.join(SCRIPT_DIR, 'webspy/static/')
+        app = flask.Flask(__name__, template_folder=tmpl_path, static_folder=static_path, static_url_path='/static')
         app.secret_key = 'SECRET_KEY'
-
+        if FLASK_PROXY:
+            app.wsgi_app = ProxyFix(
+                app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+            )
         @app.route('/')
         def index():
-            return flask.redirect('/spy')
+            return flask.redirect('spy')
         @app.route('/favicon.ico')
         def favicon():
             return ''
         @app.route('/spy.js')
         def spy_js():
-            return flask.render_template("/js/spy.js")
+            response = flask.make_response(flask.render_template("js/spy.js"))
+            response.headers['Content-Type'] = "text/javascript"
+            return response
         @app.route('/users', defaults={'route': 'users'})
         @app.route('/totals', defaults={'route': 'totals'})
         @app.route('/spy', defaults={'route': 'spy'})
         def webspy(route):
             users = []
             err = None
+            total_up_speed = total_dn_speed = total_speed = 0
+            total_up_unit = total_dn_unit = total_unit = ""
             for i in ['idlers', 'browsers', 'uploads', 'downloads', 'total', 'total_up_speed', 'total_dn_speed', 'total_speed', 'onlineusers']:
                 flask.session[i] = 0
             try:
