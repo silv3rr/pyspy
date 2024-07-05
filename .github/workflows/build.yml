@@ -106,12 +106,12 @@ jobs:
 #          if-no-files-found: error
 
   rhel-container-build-job:
-    name: Build for ${{ matrix.rhel-distro }}
+    name: Build for RHEL
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          - rhel-distro: almalinux
+          - rhel-distro: amalinux
             rhel-version: 9.4
           - rhel-distro: rockylinux
             rhel-version: 9.3
@@ -167,7 +167,7 @@ jobs:
           path: build-artifacts
       - name: Create gh release using 'hub'
         run: |
-          hub release create $(find -type f -printf '-a %p ') slv-pyspy-v$(date +%Y%m%d) -F - <<'#####'
+          gh release create $(find -type f -printf '-a %p ') slv-pyspy-v$(date +%Y%m%d) -F - <<'#####'
           pyspy
 
           Shows users logged into glftpd in terminal or as web page. Like 'gl_spy' and 'webspy' from foo-tools.
