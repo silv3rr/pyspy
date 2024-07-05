@@ -128,7 +128,7 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mkdir ./build-alma && mv -f *.tar.gz *.sha512sum ./build-alma
+          ./build.sh && mkdir ./build-${{ matrix.rhel-distro }} && mv -f *.tar.gz *.sha512sum ./build-${{ matrix.rhel-distro }}
       - uses: actions/upload-artifact@v3
         with:
           name: build-${{ matrix.rhel-distro }}-artifacts
