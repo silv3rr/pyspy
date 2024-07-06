@@ -165,11 +165,25 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           path: build-artifacts
-      - name: Create gh release using 'hub'
-        run: |
-          gh release create $(find -type f -printf '-a %p ') slv-pyspy-v$(date +%Y%m%d) -F - <<'#####'
-          pyspy
 
+      # - name: Create gh release using 'hub'
+      #   run: |
+      #     gh release create $(find -type f -printf '--attach %p ') slv-pyspy-v$(date +%Y%m%d) --file - <<'#####'
+      #     pyspy
+      #     
+      #     Shows users logged into glftpd in terminal or as web page. Like 'gl_spy' and 'webspy' from foo-tools.
+      #     
+      #     Download binaries for your specific OS
+      #     #####
+      #   working-directory: ./build-artifacts
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release using 'gh'
+        run: |
+          gh release create slv-pyspy-v$(date +%Y%m%d) $(find -type f -printf '%p ') --notes-file - <<'#####'
+          pyspy
+          
           Shows users logged into glftpd in terminal or as web page. Like 'gl_spy' and 'webspy' from foo-tools.
           
           Download binaries for your specific OS
