@@ -66,5 +66,5 @@ case $1 in
   alma) func_docker_run almalinux:9.4 "$RHEL" ;;
   rocky) func_docker_run rockylinu:9.3 "$RHEL" ;;
   alpine) func_docker_run alpine:3.18 "$ALPINE" ;;
-  *) echo "$0 $(grep -E ' *[a-z]+\).*;;' "  $0" | cut -d')' -f1 | tr -d '\n')" ;;
+  *) echo "$0 $(grep -E ' *[a-z]+\).*;;' "$0" | cut -d')' -f1 | tr -d '\n')" ;;
 esac
