@@ -49,20 +49,22 @@ RHEL="
   pip3 install --upgrade pip wheel setuptools
   pip3 install -r requirements.txt
   pip3 install pyinstaller sysv-ipc geoip2
-  ./build.sh && mkdir ./build-alma && mv -f *.tar.gz *.sha512sum ./build-alma
+  ./build.sh && mkdir ./build-$1 && mv -f *.tar.gz *.sha512sum ./build-$1
 "
 
 func_docker_run() {
   image=$1
   shift
-  docker run -it --rm  --workdir /build -v $PWD:/build $image sh -c "$*"
+  docker run -it --rm  --workdir /build -v "$PWD:/build" "$image" sh -c "$*"
 }
 
 case $1 in
   ubuntu) func_docker_run ubuntu24.04 "$UBUNTU" ;;
   debian) func_docker_run debian:12 "$DEBIAN" ;;
-  centos) func_docker_run centos:7 "$CENTOS" ;;
-  alpine) func_docker_run alpine:3.18 "$ALPINE" ;;
+  centos7) func_docker_run centos:7 "$CENTOS" ;;
+  centos-stream) func_docker_run quay.io/centos/centos:stream9 "$RHEL" ;;
   alma) func_docker_run almalinux:9.4 "$RHEL" ;;
-  rocky) func_docker_run rockylinux:9.3 "$RHEL" ;;
+  rocky) func_docker_run rockylinu:9.3 "$RHEL" ;;
+  alpine) func_docker_run alpine:3.18 "$ALPINE" ;;
+  *) echo "$0 $(grep -E ' *[a-z]+\).*;;' "  $0" | cut -d')' -f1 | tr -d '\n')" ;;
 esac

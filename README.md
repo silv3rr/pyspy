@@ -88,6 +88,12 @@ Now clone this repo and run build.sh, optionally add one or more of these args:
 
 The build script will check and warn about wrong python version and missing modules.
 
+## Build in docker
+
+Same as github actions (CI), but locally:
+
+`./docker-build-distro.sh   ubuntu  debian  centos-stream  alma  rocky  alpine`
+
 ## Issues
 
 - If geoip2 is enabled you can run out of your free geoip queries

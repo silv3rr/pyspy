@@ -966,7 +966,10 @@ def get_userfile(u_name) -> dict:
                     value = []
                 if line.startswith('CREDITS'):
                     value = 0
-                    c = int((re.sub(r'^CREDITS [^0](\d+).*', r'\1', line)).strip())
+                    try:
+                        c = int((re.sub(r'^CREDITS [^0](\d+).*', r'\1', line)).strip())
+                    except ValueError:
+                        pass
                     if isinstance(c, int) and c > 0:
                         value = f"{round(int(c) / 1024**2)}GB"
                 else:

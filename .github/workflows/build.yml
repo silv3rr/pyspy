@@ -98,7 +98,7 @@ jobs:
 #          pip3 install --upgrade pip wheel setuptools
 #          pip3 install -r requirements.txt
 #          pip3 install pyinstaller sysv-ipc geoip2
-#          ./build.sh && mkdir ./build-centos && mv -f *.tar.gz *.sha512sum ./build-centos
+#          ./build.sh && mkdir ./build-centos7 && mv -f *.tar.gz *.sha512sum ./build-centos7
 #      - uses: actions/upload-artifact@v3
 #        with:
 #          name: build-centos-artifacts
@@ -111,12 +111,17 @@ jobs:
     strategy:
       matrix:
         include:
-          - rhel-distro: almalinux
+          - rhel-distro: centos-stream
+            rhel-image: quay.io/centos/centos
+            rhel-version: stream9
+          - rhel-distro: alma-linux
+            rhel-image: almalinux
             rhel-version: 9.4
-          - rhel-distro: rockylinux
+          - rhel-distro: rocky-linux
+            rhel-image: rockylinux
             rhel-version: 9.3
       fail-fast: false    
-    container: ${{ matrix.rhel-distro }}:${{ matrix.rhel-version }}
+    container: ${{ matrix.rhel-image }}:${{ matrix.rhel-version }}
     steps:
       - uses: actions/checkout@v3
       - name: Run yum, venv, pip, build and upload artifacts
@@ -189,3 +194,5 @@ jobs:
         working-directory: ./build-artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
