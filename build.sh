@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Usage:
-#   ./build.sh _WITH_SPY _WITH_GEOIP _WITH_HTTPD _WITH_FLASK
+#   ./build.sh _WITH_GEOIP _WITH_HTTPD _WITH_FLASK _WITH_BUNDLE
 
 # Required: Python 3.7.3+, sysv-ipc, pyinstaller
 #   python3 -m venv venv && . venv/bin/activate && \
@@ -15,10 +15,16 @@ PYINSTALLER=1
 PACK=1
 REQS="$(cut -d= -f1 requirements.txt 2>/dev/null)"
 ARGS="--hidden-import sysv_ipc"
-OPTS="_WITH_SPY _WITH_GEOIP _WITH_HTTPD _WITH_FLASK"
+OPTS="_WITH_GEOIP _WITH_HTTPD _WITH_FLASK _WITH_BUNDLE"
 
 if [ "${WEBSPY:-0}" -eq 1 ]; then
-  ARGS=" $ARGS --add-data webspy:. "
+  PKG_SUFFIX="-web"
+  ARGS=" $ARGS --add-data webspy:./webspy "
+  # use webspy dir from bundule
+  # shellcheck disable=SC2086
+  if echo $OPTS | grep -q "_WITH_BUNDLE"; then
+    sed -i "s/^\(_WITH_BUNDLE\) *= *.*$/\1 = True/" "$PYSRC"
+  fi
 fi
 
 if [ ! -s requirements.txt ] || [ -z "$REQS" ]; then
@@ -49,6 +55,7 @@ for a in "$@"; do
 done
 
 # disable flask dev
+# shellcheck disable=SC2086
 if echo $OPTS | grep -q "_WITH_FLASK"; then
   sed -i "s/^\(FLASK_OPTIONS\['debug']\) *= *.*$/\1 = False/" "$PYSRC"
 fi
@@ -113,15 +120,18 @@ if [ "$PYINSTALLER" -eq 1 ]; then
     echo "ERROR: pyinstaller not found, try 'apt install python3-pyinstaller' or 'pip install pyinstaller'"
     exit 1
   }
+  # shellcheck disable=SC2086
   pyinstaller spy.py $ARGS --clean --noconfirm --onefile &&
     if [ -e "dist/spy" ]; then
       printf "\nresult: OK "
       ls -la dist/spy
+      echo
       if [ "$PACK" -eq 1 ]; then
+        # shellcheck disable=SC1091
         . /etc/os-release
-        PACKNAME="pyspy-${ID:-linux}${VERSION_ID}-python${PYVER:-3}-x86_x64"
+        PACKNAME="pyspy-${ID:-linux}${VERSION_ID}-python${PYVER:-3}-x86_x64${PKG_SUFFIX}"
         printf "Creating %s.tar.gz...\n" "$PACKNAME"
-        tar -C ./dist -cvf "${PACKNAME}.tar.gz" spy >/dev/null &&
+        tar -C ./dist -cvf "${PACKNAME}.tar.gz" ../spy.conf spy ../webspy >/dev/null &&
           sha512sum "${PACKNAME}.tar.gz" >"${PACKNAME}.sha512sum" && echo "shasum: OK" || echo "ERROR: shasum"
       fi
     else

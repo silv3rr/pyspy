@@ -30,6 +30,7 @@ import sysv_ipc
 _WITH_GEOIP = False
 _WITH_HTTPD = True
 _WITH_FLASK = True
+_WITH_BUNDLE = False
 
 PYINSTALLER = False
 
@@ -47,11 +48,13 @@ if _WITH_GEOIP:
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     PYINSTALLER = True
 
-VERSION = "20230705"
+VERSION = "20240803"
 
 SCRIPT_PATH = os.path.abspath(__file__) if os.path.abspath(__file__) else os.path.realpath(sys.argv[0])
 if PYINSTALLER:
     SCRIPT_PATH = os.path.realpath(sys.argv[0])
+    if _WITH_BUNDLE:
+        BUNDLE_DIR = os.path.abspath(os.path.dirname(__file__)) if os.path.dirname(__file__) else sys._MEIPASS
 SCRIPT = os.path.basename(sys.argv[0])
 SCRIPT_NAME = os.path.splitext(SCRIPT)[0]
 SCRIPT_DIR = os.path.dirname(SCRIPT_PATH)
@@ -1327,6 +1330,14 @@ def create_app() -> object:
     if _WITH_FLASK and FLASK_MODE == 1:
         tmpl_path = os.path.join(SCRIPT_DIR, 'webspy/templates/')
         static_path = os.path.join(SCRIPT_DIR, 'webspy/static/')
+        # if webspy dir does not exist, use incl dir from bundle
+        if PYINSTALLER and _WITH_BUNDLE:
+            try:
+                os.path.isdir(tmpl_path)
+                os.path.isdir(static_path)
+            except OSError:
+                tmpl_path = os.path.join(BUNDLE_DIR, 'webspy/templates/')
+                static_path = os.path.join(BUNDLE_DIR, 'webspy/static/')
         app = flask.Flask(__name__, template_folder=tmpl_path, static_folder=static_path, static_url_path='/static')
         app.secret_key = 'SECRET_KEY'
         if FLASK_PROXY:

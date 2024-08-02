@@ -41,7 +41,7 @@ Supported: Debian 10, 11, 12 and Ubuntu 20.04, 22.04, 24.04, CentOS Stream, Alma
 
 EOL: [CentOS 7](https://github.com/silv3rr/pyspy/releases/download/slv-pyspy-v20230708/pyspy-centos7-python3.6-x86_x64.tar.gz)
 
-All files on [Releases](../../releases) tab. Click **Show all .. assets** link at the bottom.
+Get all files from [Releases](../../releases) tab. Click **Show all .. assets** link at the bottom.
 
 ## apt
 
@@ -76,7 +76,7 @@ To set gl path, color and refresh for cli, web ip/port etc edit 'spy.conf'. By d
 
 All options are explained at the bottom of conf. Make sure 'ipc_key' matches glftpd.
 
-To change how flask webspy looks, you can edit static/style.css and html in templates dir.
+To change how flask webspy looks, edit webspy/static/style.css and html in webspy/templates dir.
 
 ## Build
 

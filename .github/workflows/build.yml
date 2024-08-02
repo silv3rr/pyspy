@@ -61,23 +61,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run apt, venv, pip, build and upload artifacts
         run: |
-          DEBIAN_FRONTEND=noninteractive apt-get update -y
-          apt-get install -y upx-ucl || {
+          DEB="upx-ucl_4.2.2-3_amd64.deb"  #upx-ucl_3.96-2_amd64.deb
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -y
+          if ! DEBIAN_FRONTEND=noninteractive apt-get install -y upx-ucl; then
             apt-get install -y libucl1 &&
-            wget -q http://ftp.us.debian.org/debian/pool/main/u/upx-ucl/upx-ucl_3.96-3+b1_amd64.deb && 
-            dpkg -i upx-ucl_3.96-3+b1_amd64.deb;
-          }
+            wget -q http://ftp.us.debian.org/debian/pool/main/u/upx-ucl/$DEB &&
+            dpkg -i $DEB;
+          fi
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2 flask
           ./build.sh && mkdir ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
+      - if: ${{ matrix.debian-release }} == 'bookworm'
+        run: WEBSPY=1 ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
       - uses: actions/upload-artifact@v4
         with:
           name: build-debian-artifacts
           path: ./build-debian/*
           if-no-files-found: error
 
+# disabled, EOL
 #  centos7-container-build-job:
 #    name: Build for CentOS 7
 #    runs-on: ubuntu-latest
