@@ -983,13 +983,15 @@ def kill_procid(u_name, users):
     """ kill user using procid """
     for user in users:
         if user.name == u_name:
-            if os.popen(f"ps --no-headers -o comm -p {user.get('procid')}").read().strip() == 'glftpd':
-                try:
-                    procid = user.get('procid')
-                    os.kill(int(procid), 15)
-                    return dict(status="Success", procid=procid)
-                except OSError as err:
-                    return dict(status="NotRoot", procid=procid, error=err)
+            #if os.popen(f"ps --no-headers -o comm -p {user.get('procid')}").read().strip() == 'glftpd':
+            with open(os.path.join('/proc', str(user.get('procid')), 'comm'), 'rb') as fp:
+                if fp.read().split(b'\x00')[0].decode().strip() == 'glftpd':
+                    try:
+                        procid = user.get('procid')
+                        os.kill(int(procid), 15)
+                        return dict(status="Success", procid=procid)
+                    except OSError as err:
+                        return dict(status="NotRoot", procid=procid, error=err)
     return dict(status="NotFound")
 
 
