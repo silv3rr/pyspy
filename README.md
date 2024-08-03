@@ -8,7 +8,7 @@ Shows users logged into glftpd either in a terminal window or as web page. Like 
 
 _cli mode_
 
-![screenshot_cli](docs/cli.png)
+[![screenshot_cli](docs/cli.png)](https://github.com/silv3rr/pyspy/blob/main/docs/demo.gif)
 
 _web mode_
 
