@@ -7,8 +7,12 @@ const url_users = {{ url_for('webspy', route='users') | tojson }};
 const url_totals = {{ url_for('webspy', route='totals') | tojson }};
 
 function set_norefresh() {
-    clearTimeout(timeout_id)
-    document.getElementById('show_info').innerText = ('autorefresh: off (reload page to re-enable)');
+    setTimeout(() => {
+        clearTimeout(timeout_id)
+    }, 12000);
+    if (document.getElementById('show_info')) {
+        document.getElementById('show_info').innerText = ('autorefresh: off (reload page to re-enable)');
+    }
 }
 
 function api_call(endpoint, username) {
@@ -60,7 +64,7 @@ if (el && p == "") {
     }, 1000);
 })()
 if (debug) {
-    console.log(`post loop interval_id={interval_id}`)
+    console.log(`post loop timeout_id=${timeout_id}`)
 }
 const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
 toggleSwitch.addEventListener('change', switchTheme, false);
