@@ -36,7 +36,7 @@ jobs:
           ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
       - uses: actions/upload-artifact@v4
         with:
-          name: build-ubuntu-artifacts
+          name: build-ubuntu-artifacts-${{ matrix.ubuntu-version }}
           path: ./build-ubuntu/*
           if-no-files-found: error
 
@@ -74,8 +74,9 @@ jobs:
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2 flask
           ./build.sh && mkdir ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
-      - if: ${{ matrix.debian-release }} == 'bookworm'
-        run: WEBSPY=1 ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
+          if [ ${{ matrix.debian-release }} = 'bookworm' ]; then
+            WEBSPY=1 ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: build-debian-artifacts
