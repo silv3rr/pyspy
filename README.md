@@ -29,7 +29,7 @@ Running `./spy` without args starts `--cli` mode (default)
 
 ## Installation
 
-Only latest glftpd version 2.12+ is supported (other versions untested)
+Only glftpd version 2.12+ is supported (other versions untested)
 
 Pick one of these 3 setup methods
 
