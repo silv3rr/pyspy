@@ -61,14 +61,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run apt, venv, pip, build and upload artifacts
         run: |
-          DEB="upx-ucl_3.96-2_amd64.deb"
           export DEBIAN_FRONTEND=noninteractive
           apt-get update -y
-          if ! DEBIAN_FRONTEND=noninteractive apt-get install -y upx-ucl; then
-            apt-get install -y libucl1 &&
-            wget -q http://ftp.us.debian.org/debian/pool/main/u/upx-ucl/$DEB &&
-            dpkg -i $DEB;
-          fi
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
@@ -83,7 +77,7 @@ jobs:
           path: ./build-debian/*
           if-no-files-found: error
 
-# disabled, EOL
+# XXX: disabled, EOL
 #  centos7-container-build-job:
 #    name: Build for CentOS 7
 #    runs-on: ubuntu-latest
@@ -98,8 +92,6 @@ jobs:
 #      - name: Run yum, venv, pip, build and upload artifacts
 #        run: |
 #          yum install -y gcc python3-devel python3-pip python3-virtualenv
-#          yum install -y https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/u/ucl-1.03-24.el7.x86_64.rpm
-#          yum install -y https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/u/upx-3.96-9.el7.x86_64.rpm
 #          python3 -m venv venv && . venv/bin/activate
 #          pip3 install --upgrade pip wheel setuptools
 #          pip3 install -r requirements.txt
@@ -134,7 +126,6 @@ jobs:
         run: |
           dnf install -y gcc python3-devel python3-pip
           dnf install -y epel-release
-          dnf install -y upx ucl
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
@@ -154,12 +145,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run ap, venv, pip, build and upload artifacts
         run: |
-          apk add python3 python3-dev py3-pip py3-virtualenv gcc musl-dev upx
+          apk add python3 python3-dev py3-pip py3-virtualenv gcc musl-dev
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2 flask
           ./build.sh && mkdir ./build-alpine && mv -f *.tar.gz *.sha512sum ./build-alpine
+          WEBSPY=1 ./build.sh && mkdir ./build-alpine && mv -f *.tar.gz *.sha512sum ./build-alpine
       - uses: actions/upload-artifact@v4
         with:
           name: build-alpine-artifacts
@@ -176,23 +168,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: build-artifacts
-
-      # - name: Create gh release using 'hub'
-      #   run: |
-      #     gh release create $(find -type f -printf '--attach %p ') slv-pyspy-v$(date +%Y%m%d) --file - <<'#####'
-      #     pyspy
-      #     
-      #     Shows users logged into glftpd in terminal or as web page. Like 'gl_spy' and 'webspy' from foo-tools.
-      #     
-      #     Download binaries for your specific OS
-      #     #####
-      #   working-directory: ./build-artifacts
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      # XXX: (replaced)  hub release create slv-pyspy-v$(date +%Y%m%d) $(find -type f -printf '%p ') --notes-file - <<'#####'
       - name: Create release using 'gh'
         run: |
-          gh release create slv-pyspy-v$(date +%Y%m%d) $(find -type f -printf '%p ') --notes-file - <<'#####'
           Shows users logged into glftpd in terminal or as web page. Like 'gl_spy' and 'webspy' from foo-tools.
           
           Download binaries for your specific OS
