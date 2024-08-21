@@ -10,8 +10,9 @@ on:
 env:
   GIT_USER_NAME: github-actions[bot]
   GIT_USER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-  BUILD_CENTOS7: false
   BUILD_WITH_BUNDLE: true
+
+# BUILD_CENTOS7 is set as repository variable
 
 jobs:
   ubuntu-vm-build-job:
@@ -82,7 +83,7 @@ jobs:
           if-no-files-found: error
 
   centos7-container-build-job:
-    if: env.BUILD_CENTOS7
+    if: vars.BUILD_CENTOS7
     name: Build for CentOS 7
     runs-on: ubuntu-latest
     container: centos:7
