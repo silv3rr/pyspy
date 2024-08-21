@@ -6,13 +6,16 @@ const div_response = document.getElementById("spy_api_result");
 const url_users = {{ url_for('webspy', route='users') | tojson }};
 const url_totals = {{ url_for('webspy', route='totals') | tojson }};
 
-function set_norefresh() {
+function set_norefresh(delay_ms = 6000) {
+    if (document.getElementById('show_info')) {
+        document.getElementById('show_info').innerText = ('autorefresh: stopping...');
+    }
     setTimeout(() => {
         clearTimeout(timeout_id)
-    }, 12000);
-    if (document.getElementById('show_info')) {
-        document.getElementById('show_info').innerText = ('autorefresh: off (reload page to re-enable)');
-    }
+        if (document.getElementById('show_info')) {
+            document.getElementById('show_info').innerText = ('autorefresh: off (reload page to re-enable)');
+        }
+    }, delay_ms);
 }
 
 function api_call(endpoint, username) {
@@ -34,6 +37,7 @@ function api_call(endpoint, username) {
         div_response.style = "display:none;"
     }, 8000);
 }
+
 let spy_params = new URLSearchParams(window.location.search);
 let el = document.getElementById('sort_rev') ? document.getElementById('sort_rev') : null
 let p = spy_params.get('sort_rev')
@@ -63,9 +67,11 @@ if (el && p == "") {
         loop()
     }, 1000);
 })()
+
 if (debug) {
     console.log(`post loop timeout_id=${timeout_id}`)
 }
+
 const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
 toggleSwitch.addEventListener('change', switchTheme, false);
 
@@ -79,10 +85,11 @@ function switchTheme(e) {
         localStorage.setItem('theme', 'light');
     }    
 }
+
 const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
+
 if (currentTheme) {
     document.documentElement.setAttribute('data-theme', currentTheme);
-
     if (currentTheme === 'dark') {
         toggleSwitch.checked = true;
     }
