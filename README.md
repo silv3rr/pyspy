@@ -43,6 +43,8 @@ EOL: [CentOS 7](https://github.com/silv3rr/pyspy/releases/download/slv-pyspy-v20
 
 Get all files from [Releases](../../releases) tab. Click **Show all .. assets** link at the bottom.
 
+_the '-web' version is build with 'webspy' dir in binary (`_WITH_BUNDLE`), it's used by [docker-glftpd](https://github.com/silv3rr/docker-glftpd)_
+
 ## apt
 
 - `apt install python3-sysv-ipc`
@@ -92,10 +94,7 @@ The build script will check and warn about wrong python version and missing modu
 
 Same as github actions (CI), but build in local container.
 
-```
-./docker-build-distro.sh -h
-USAGE: ./docker-build-distro.sh <ubuntu|debian|centos-stream|alma|rocky|alpine>
-```
+`USAGE: ./docker-run-build.sh <ubuntu|debian|centos-stream|alma|rocky|alpine>`
 
 ## Issues
 
