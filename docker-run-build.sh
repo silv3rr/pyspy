@@ -1,7 +1,15 @@
 #!/bin/sh
 
-# from github workflow
-# runs latest docker image by default
+# build in local docker container, uses same cmds as github workblow
+
+# run latest images by default
+TAG="${2:-latest}"
+
+# add post build cmds
+CLEANUP="
+  test -e venv/pyvenv.cfg && rm -rf venv
+  test -e build/spy && rm -rf build
+"
 
 UBUNTU="
   python3 -m venv venv && . venv/bin/activate
@@ -19,7 +27,7 @@ DEBIAN="
   pip3 install --force -r requirements.txt
   pip3 install --force pyinstaller sysv-ipc geoip2 flask
   ./build.sh && mkdir -p ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
-  WEBSPY=1 ./build.sh && mkdir -p ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
+  ./build.sh _WITH_BUNDLE && mkdir -p ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
 "
 _CENTOS_EOL="
   yum install -y gcc python3-devel python3-pip python3-virtualenv
@@ -36,7 +44,7 @@ ALPINE="
   pip3 install -r requirements.txt
   pip3 install pyinstaller sysv-ipc geoip2 flask
   ./build.sh && mkdir -p ./build-alpine && mv -f *.tar.gz *.sha512sum ./build-alpine
-  WEBSPY=1 ./build.sh && mkdir -p ./build-alpine && mv -f *.tar.gz *.sha512sum ./build-alpine
+  ./build.sh _WITH_BUNDLE && mkdir -p ./build-alpine && mv -f *.tar.gz *.sha512sum ./build-alpine
 "
 RHEL="
   dnf install -y gcc python3-devel python3-pip
@@ -54,11 +62,12 @@ func_docker_run() {
   if [ -n "$DEBUG" ] && [ "$DEBUG" -eq 1 ]; then
     docker run -it --workdir /build -v "$PWD:/build" "$image" sh
   else
-    docker run --rm  --workdir /build -v "$PWD:/build" "$image" sh -c "$*"
+    docker run --rm  --workdir /build -v "$PWD:/build" "$image" sh -c "
+      $*
+      $CLEANUP
+    "
   fi
 }
-
-TAG="${2:-latest}"
 
 # shellcheck disable=SC2046
 case $1 in
@@ -69,5 +78,5 @@ case $1 in
   alma) func_docker_run "almalinux:$TAG" "$RHEL" ;;
   rocky) func_docker_run "rockylinux:$TAG" "$RHEL" ;;
   alpine) func_docker_run  "alpine:$TAG" "$ALPINE" ;;
-  *) echo "USAGE: $0" $(grep -Pow ' \K[a-z-]+\)' docker-build-distro.sh | cut -d')' -f1) ;;
+  *) printf "USAGE: %s <%s>\n" "$0" "$(grep -Pow ' \K[a-z-]+\)' "$0" | sed 's/)//g' | sed ':a;N;$!ba;s/\n/|/g')" ;;
 esac

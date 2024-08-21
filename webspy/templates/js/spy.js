@@ -1,3 +1,7 @@
+// spy.js: used by webspy
+
+// this is a flask template so url_users and url_totals get set
+
 var timeout_id
 const debug = false;
 const div_users = document.getElementById("include_spy_users");
@@ -5,6 +9,8 @@ const div_totals = document.getElementById("include_spy_totals");
 const div_response = document.getElementById("spy_api_result");
 const url_users = {{ url_for('webspy', route='users') | tojson }};
 const url_totals = {{ url_for('webspy', route='totals') | tojson }};
+
+// stop refreshing
 
 function set_norefresh(delay_ms = 6000) {
     if (document.getElementById('show_info')) {
@@ -17,6 +23,8 @@ function set_norefresh(delay_ms = 6000) {
         }
     }, delay_ms);
 }
+
+// user: show, kick, ...
 
 function api_call(endpoint, username) {
     fetch(encodeURI(`${endpoint}/${username}`), {
@@ -38,6 +46,8 @@ function api_call(endpoint, username) {
     }, 8000);
 }
 
+// reverse sort checkbox
+
 let spy_params = new URLSearchParams(window.location.search);
 let el = document.getElementById('sort_rev') ? document.getElementById('sort_rev') : null
 let p = spy_params.get('sort_rev')
@@ -46,6 +56,8 @@ if (el && p == "") {
 } else if (el && p == "True") {
     el.checked = true;
 }
+
+// main refresh div loop
 
 (function loop() {
     timeout_id = window.setTimeout(() => {
@@ -71,6 +83,8 @@ if (el && p == "") {
 if (debug) {
     console.log(`post loop timeout_id=${timeout_id}`)
 }
+
+// theme switcher
 
 const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
 toggleSwitch.addEventListener('change', switchTheme, false);
