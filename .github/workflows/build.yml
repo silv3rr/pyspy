@@ -179,6 +179,7 @@ jobs:
       # XXX: (replaced)  hub release create slv-pyspy-v$(date +%Y%m%d) $(find -type f -printf '%p ') --notes-file - <<'#####'
       - name: Create release using 'gh'
         run: |
+          gh release create slv-pyspy-v$(date +%Y%m%d) $(find -type f -printf '%p ') --notes-file - <<'#####'
           Shows users logged into glftpd in terminal or as web page. Like 'gl_spy' and 'webspy' from foo-tools.
           
           Download binaries for your specific OS
