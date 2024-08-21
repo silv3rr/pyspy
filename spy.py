@@ -1332,11 +1332,9 @@ def create_app() -> object:
         static_path = os.path.join(SCRIPT_DIR, 'webspy/static/')
         # if webspy dir does not exist, use incl dir from bundle
         if PYINSTALLER and _WITH_BUNDLE:
-            try:
-                os.path.isdir(tmpl_path)
-                os.path.isdir(static_path)
-            except OSError:
+            if not os.path.isdir(tmpl_path):
                 tmpl_path = os.path.join(BUNDLE_DIR, 'webspy/templates/')
+            if not os.path.isdir(static_path):
                 static_path = os.path.join(BUNDLE_DIR, 'webspy/static/')
         app = flask.Flask(__name__, template_folder=tmpl_path, static_folder=static_path, static_url_path='/static')
         app.secret_key = 'SECRET_KEY'
