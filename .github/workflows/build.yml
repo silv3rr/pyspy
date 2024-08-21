@@ -83,7 +83,7 @@ jobs:
           if-no-files-found: error
 
   centos7-container-build-job:
-    if: vars.BUILD_CENTOS7
+    if: ${{ vars.BUILD_CENTOS7 == 'true' }}
     name: Build for CentOS 7
     runs-on: ubuntu-latest
     container: centos:7
