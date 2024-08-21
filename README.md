@@ -90,9 +90,12 @@ The build script will check and warn about wrong python version and missing modu
 
 ## Build in docker
 
-Same as github actions (CI), but locally:
+Same as github actions (CI), but build in local container.
 
-`./docker-build-distro.sh   ubuntu  debian  centos-stream  alma  rocky  alpine`
+```
+./docker-build-distro.sh -h
+USAGE: ./docker-build-distro.sh <ubuntu|debian|centos-stream|alma|rocky|alpine>
+```
 
 ## Issues
 

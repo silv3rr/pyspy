@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# Build pyspy binaries with pyinstaller
+
 # Usage:
 #   ./build.sh _WITH_GEOIP _WITH_HTTPD _WITH_FLASK _WITH_BUNDLE
 
@@ -15,17 +17,6 @@ REQS="$(cut -d= -f1 requirements.txt 2>/dev/null)"
 ARGS="--hidden-import sysv_ipc"
 OPTS="_WITH_GEOIP _WITH_HTTPD _WITH_FLASK _WITH_BUNDLE"
 PACKFILES="../spy.conf spy ../webspy"
-
-if [ "${WEBSPY:-0}" -eq 1 ]; then
-  ARGS=" $ARGS --add-data webspy:./webspy "
-  PACKFILES="../spy.conf spy"
-  PACKSUFFIX="-web"
-  # shellcheck disable=SC2086
-  if echo $OPTS | grep -q "_WITH_BUNDLE"; then
-    sed -i "s/^\(_WITH_BUNDLE\) *= *.*$/\1 = True/" "$PYSRC"
-  fi
-  echo "build: including webspy dir in pyinstaller bundle..."
-fi
 
 if [ ! -s requirements.txt ] || [ -z "$REQS" ]; then
   echo "build: WARNING missing requirements"
@@ -44,21 +35,24 @@ for a in "$@"; do
     ARGS="--hidden-import flask"
     REQS="$REQS flask"
   fi
+  if echo "$a" | grep -q "_WITH_BUNDLE"; then
+    echo "build: including webspy dir in pyinstaller bundle..."
+    ARGS=" $ARGS --add-data webspy:./webspy "
+    PACKFILES="../spy.conf spy"
+    PACKSUFFIX="-web"
+  fi
   for o in $OPTS; do
     if echo "$a" | grep -q "$o"; then
       if grep -Eiq "^$a *= *false$" "$PYSRC"; then
         sed -i 's/^\('"$a"'\) *= *.*$/\1 = True/' "$PYSRC" &&
-          echo "Set $a to: True"
+          echo "build: set $a to True"
       fi
     fi
   done
 done
 
 # disable flask dev
-# shellcheck disable=SC2086
-if echo $OPTS | grep -q "_WITH_FLASK"; then
-  sed -i "s/^\(FLASK_OPTIONS\['debug']\) *= *.*$/\1 = False/" "$PYSRC"
-fi
+sed -i "s/^\(FLASK_OPTIONS\['debug']\) *= *.*$/\1 = False/" "$PYSRC"
 
 echo "build: creating one single executable file..."
 
@@ -78,25 +72,18 @@ command -V python3 || {
   echo "build: ERROR python3 not found"
   exit 1
 }
-#command -V bc || { echo "ERROR: bc not found"; exit 1; }
 
 PYVER="$(python3 --version | sed 's/.* \([0-9]\.[0-9]\{1,2\}\).*/\1/' | grep -E '^[0-9.]+$' || echo 0)"
 PYVER_OK=0
-#if command -V bc >/dev/null 2>&1; then
-#  if [ "$(echo "$PYVER >= $PYREQVER" | bc)" -eq 1 ]; then
-#    PYVER_OK=1
-#  fi
-#else
-  PYVER_MAY="$(echo "$PYVER" | sed 's/\([0-9]\)\.[0-9]\+/\1/')"
-  PYVER_MIN="$(echo "$PYVER" | sed 's/[0-9]\.\([0-9]\+\)/\1/')"
-  PYREQVER_MAY="$(echo $PYREQVER | sed 's/\([0-9]\)\.[0-9]/\1/')"
-  PYREQVER_MIN="$(echo $PYREQVER | sed 's/[0-9]\.\([0-9]\+\)/\1/')"
-  if [ "$PYVER_MAY" -gt "$PYREQVER_MAY" ]; then
-    PYVER_OK=1
-  elif [ "$PYVER_MAY" -eq "$PYREQVER_MAY" ] && [ "$PYVER_MIN" -ge "$PYREQVER_MIN" ]; then
-    PYVER_OK=1
-  fi
-#fi
+PYVER_MAY="$(echo "$PYVER" | sed 's/\([0-9]\)\.[0-9]\+/\1/')"
+PYVER_MIN="$(echo "$PYVER" | sed 's/[0-9]\.\([0-9]\+\)/\1/')"
+PYREQVER_MAY="$(echo $PYREQVER | sed 's/\([0-9]\)\.[0-9]/\1/')"
+PYREQVER_MIN="$(echo $PYREQVER | sed 's/[0-9]\.\([0-9]\+\)/\1/')"
+if [ "$PYVER_MAY" -gt "$PYREQVER_MAY" ]; then
+  PYVER_OK=1
+elif [ "$PYVER_MAY" -eq "$PYREQVER_MAY" ] && [ "$PYVER_MIN" -ge "$PYREQVER_MIN" ]; then
+  PYVER_OK=1
+fi
 if [ "$PYVER_OK" -eq 1 ]; then
   echo "build: python version is OK (need Python ${PYREQVER}+ got v${PYVER})"
 else
@@ -141,3 +128,9 @@ if [ "$PYINSTALLER" -eq 1 ]; then
       exit 1
     fi
 fi
+
+# reset to defaults
+sed -i "s/^\(_WITH_GEOIP\) *= *.*$/\1 = False/" "$PYSRC"
+sed -i "s/^\(_WITH_HTTPD\) *= *.*$/\1 = True/" "$PYSRC"
+sed -i "s/^\(_WITH_FLASK\) *= *.*$/\1 = True/" "$PYSRC"
+sed -i "s/^\(_WITH_BUNDLE\) *= *.*$/\1 = False/" "$PYSRC"

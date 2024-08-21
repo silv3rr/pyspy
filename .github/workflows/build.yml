@@ -69,7 +69,7 @@ jobs:
           pip3 install pyinstaller sysv-ipc geoip2 flask
           ./build.sh && mkdir ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
           if [ ${{ matrix.debian-release }} = 'bookworm' ]; then
-            WEBSPY=1 ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-debian
+            ./build.sh _WITH_BUNDLE && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-debian
           fi
       - uses: actions/upload-artifact@v4
         with:
@@ -151,7 +151,7 @@ jobs:
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2 flask
           ./build.sh && mkdir ./build-alpine && mv -f *.tar.gz *.sha512sum ./build-alpine
-          WEBSPY=1 ./build.sh && mkdir ./build-alpine && mv -f *.tar.gz *.sha512sum ./build-alpine
+          ./build.sh _WITH_BUNDLE && mkdir ./build-alpine && mv -f *.tar.gz *.sha512sum ./build-alpine
       - uses: actions/upload-artifact@v4
         with:
           name: build-alpine-artifacts
