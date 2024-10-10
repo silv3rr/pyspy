@@ -73,7 +73,7 @@ _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_i
 
 ## docker
 
-Alternatively, pyspy is also be part of [docker-glftpd](https://github.com/silv3rr/docker-glftpd)'s web interface which offers a complete gl install.
+Alternatively, pyspy is also part of [docker-glftpd](https://github.com/silv3rr/docker-glftpd)'s web interface which offers a complete gl install.
 
 ## Configuration
 
