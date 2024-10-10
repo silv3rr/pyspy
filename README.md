@@ -52,7 +52,7 @@ _the '-web' version is for [docker-glftpd](https://github.com/silv3rr/docker-glf
 
 - `apt install python3-sysv-ipc`
 - `apt install python3-geoip2 python3-flask`  (optional)
-- `git clone` this repo and run script: `./pywho.py`
+- `git clone` this repo and run: `./spy.py`
 
 ## venv
 
