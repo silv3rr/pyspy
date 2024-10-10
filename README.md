@@ -46,7 +46,7 @@ Supported:
 
 EOL: [CentOS 7](https://github.com/silv3rr/pyspy/releases/download/slv-pyspy-v20230708/pyspy-centos7-python3.6-x86_x64.tar.gz)
 
-_the '-web' version is for [docker-glftpd](https://github.com/silv3rr/docker-glftpd)_
+_the '-web' version is for [glftpd-webui](https://github.com/silv3rr/glftpd-webui)_
 
 ## apt
 
@@ -73,7 +73,7 @@ _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_i
 
 ## docker
 
-Alternatively, pyspy is also part of [docker-glftpd](https://github.com/silv3rr/docker-glftpd)'s web interface which offers a complete gl install.
+Alternatively, pyspy is also part of [glftpd-webui](https://github.com/silv3rr/glftpd-webui). Besides showing who is online it also does glftpd user management and more.
 
 ## Configuration
 
