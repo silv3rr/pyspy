@@ -31,19 +31,22 @@ Running `./spy` without args starts `--cli` mode (default)
 
 Only glftpd version 2.12+ is supported (other versions untested)
 
-Pick one of these 3 setup methods
+Pick one of these 3 setup methods: binaries, apt or venv.
 
 ## binaries
 
-No dependencies, just single a executable file available to [download](../../releases).
+No dependencies, just a single executable file. Available to [download from Releases](../../releases) . Click "Show all assets" link at the bottom to expand file list.
 
-Supported: Debian 10, 11, 12 and Ubuntu 20.04, 22.04, 24.04, CentOS Stream, Almalinux 9.3, Rockylinux 9.3, Alpine
+Supported:
+
+- Debian 10, 11, 12
+- Ubuntu 20.04, 22.04, 24.04
+- CentOS Stream, Almalinux 9.3, Rockylinux 9.3
+- Alpine 3.20
 
 EOL: [CentOS 7](https://github.com/silv3rr/pyspy/releases/download/slv-pyspy-v20230708/pyspy-centos7-python3.6-x86_x64.tar.gz)
 
-Get all files from [Releases](../../releases) tab. Click **Show all .. assets** link at the bottom.
-
-_the '-web' version is build with 'webspy' dir in binary (`_WITH_BUNDLE`), it's used by [docker-glftpd](https://github.com/silv3rr/docker-glftpd)_
+_the '-web' version is for [docker-glftpd](https://github.com/silv3rr/docker-glftpd)_
 
 ## apt
 
@@ -51,7 +54,7 @@ _the '-web' version is build with 'webspy' dir in binary (`_WITH_BUNDLE`), it's 
 - `apt install python3-geoip2 python3-flask`  (optional)
 - `git clone` this repo and run script: `./pywho.py`
 
-## venv/pip
+## venv
 
 ``` bash
 # Install py3/venv pkgs first, e.g. for debian/redhat:
@@ -70,7 +73,7 @@ _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_i
 
 ## docker
 
-Alternatively pyspy is also be part of [docker-glftpd](https://github.com/silv3rr/docker-glftpd)'s web interface which offers a complete gl install.
+Alternatively, pyspy is also be part of [docker-glftpd](https://github.com/silv3rr/docker-glftpd)'s web interface which offers a complete gl install.
 
 ## Configuration
 
