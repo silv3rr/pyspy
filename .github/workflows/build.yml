@@ -39,7 +39,7 @@ jobs:
           ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
       - uses: actions/upload-artifact@v4
         with:
-          name: build-ubuntu--${{ matrix.ubuntu-version }}-artifacts
+          name: build-ubuntu-${{ matrix.ubuntu-version }}-artifacts
           path: ./build-ubuntu/*
           if-no-files-found: error
 
