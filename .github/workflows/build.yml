@@ -73,7 +73,7 @@ jobs:
           pip3 install pyinstaller sysv-ipc geoip2 flask
           ./build.sh && mkdir ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
           
-          if [ "${{ env.BUILD_WITH_BUNDLE }}" == "true" }} ] && [ "${{ env.matrix.web }}" == "true" ]; then
+          if [ "${{ env.BUILD_WITH_BUNDLE }}" == "true" }} ] && [ "${{ matrix.web }}" == "true" ]; then
             run: ./build.sh _WITH_BUNDLE && mkdir -p ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-debian
           fi          
       - uses: actions/upload-artifact@v4
