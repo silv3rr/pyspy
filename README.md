@@ -39,12 +39,15 @@ No dependencies, just a single executable file. Available to [download from Rele
 
 Supported:
 
-- Debian 10, 11, 12
+- Debian 11, 12, 13
 - Ubuntu 20.04, 22.04, 24.04
 - CentOS Stream, Almalinux 9.3, Rockylinux 9.3
 - Alpine 3.20
 
-EOL: [CentOS 7](https://github.com/silv3rr/pyspy/releases/download/slv-pyspy-v20230708/pyspy-centos7-python3.6-x86_x64.tar.gz)
+EOL:
+
+- [Debian 10](https://github.com/silv3rr/pyspy/releases/download/slv-pyspy-v20240821/pyspy-debian10-python3.7-x86_x64.tar.gz)
+- [CentOS 7](https://github.com/silv3rr/pyspy/releases/download/slv-pyspy-v20230708/pyspy-centos7-python3.6-x86_x64.tar.gz)
 
 _the '-web' version is for [glftpd-webui](https://github.com/silv3rr/glftpd-webui)_
 
