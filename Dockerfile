@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.9.17-bookworm
+FROM python:latest
 LABEL org.opencontainers.image.source=https://github.com/silv3rr/pyspy
 WORKDIR /app
 COPY requirements.txt requirements.txt

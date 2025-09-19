@@ -58,6 +58,9 @@ jobs:
           - debian-release: bookworm
             debian-version: 12
             python-version: 3.11
+          - debian-release: trixie
+            debian-version: 13
+            python-version: 3.13
             web: true
       fail-fast: false
     container: python:${{ matrix.python-version }}-${{ matrix.debian-release }}
@@ -75,7 +78,7 @@ jobs:
           
           if [ "${{ env.BUILD_WITH_BUNDLE }}" == "true" }} ] && [ "${{ matrix.web }}" == "true" ]; then
             run: ./build.sh _WITH_BUNDLE && mkdir -p ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-debian
-          fi          
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: build-debian-${{ matrix.debian-version }}-artifacts
@@ -89,7 +92,7 @@ jobs:
     container: centos:7
     steps:
       # get git-2.18 from softwarecollections, git-1.8 from base repo is too old for gh-actions
-      - name: Install git-2.18  
+      - name: Install git-2.18
         run: |
           yum install -y centos-release-scl && yum install -y rh-git218
           cp -v -rf /opt/rh/httpd24/root/* /opt/rh/rh-git218/root/* / || true
@@ -123,7 +126,7 @@ jobs:
           - rhel-distro: rocky-linux
             rhel-image: rockylinux
             rhel-version: 9.3
-      fail-fast: false    
+      fail-fast: false
     container: ${{ matrix.rhel-image }}:${{ matrix.rhel-version }}
     steps:
       - uses: actions/checkout@v4
@@ -187,5 +190,4 @@ jobs:
         working-directory: ./build-artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 

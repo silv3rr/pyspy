@@ -1,11 +1,11 @@
 #!/bin/sh
 
-# build in local docker container, uses same cmds as github workblow
+# build in local docker container, similar to github workflow
 
 # run latest images by default
 TAG="${2:-latest}"
 
-# add post build cmds
+# add post build commands
 CLEANUP="
   test -e venv/pyvenv.cfg && rm -rf venv
   test -e build/spy && rm -rf build
@@ -60,9 +60,9 @@ func_docker_run() {
   image=$1
   shift
   if [ -n "$DEBUG" ] && [ "$DEBUG" -eq 1 ]; then
-    docker run -it --workdir /build -v "$PWD:/build" "$image" sh
+    docker run -it --pull always --workdir /build -v "$PWD:/build" "$image" sh
   else
-    docker run --rm  --workdir /build -v "$PWD:/build" "$image" sh -c "
+    docker run --rm --pull always --workdir /build -v "$PWD:/build" "$image" sh -c "
       $*
       $CLEANUP
     "
@@ -72,11 +72,12 @@ func_docker_run() {
 # shellcheck disable=SC2046
 case $1 in
   ubuntu) func_docker_run "ubuntu:$TAG" "$UBUNTU" ;;
-  debian) func_docker_run "debian:$TAG" "$DEBIAN" ;;
+  #debian) func_docker_run "debian:$TAG" "$DEBIAN" ;;
+  debian) func_docker_run "python:$TAG" "$DEBIAN" ;;
   #centos7) func_docker_run centos:7 "$_CENTOS_EOL" ;;
   centos-stream) func_docker_run "quay.io/centos/centos:$TAG" "$RHEL" ;;
   alma) func_docker_run "almalinux:$TAG" "$RHEL" ;;
   rocky) func_docker_run "rockylinux:$TAG" "$RHEL" ;;
-  alpine) func_docker_run  "alpine:$TAG" "$ALPINE" ;;
+  alpine) func_docker_run "alpine:$TAG" "$ALPINE" ;;
   *) printf "USAGE: %s <%s>\n" "$0" "$(grep -Pow ' \K[a-z-]+\)' "$0" | sed 's/)//g' | sed ':a;N;$!ba;s/\n/|/g')" ;;
 esac

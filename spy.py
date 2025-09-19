@@ -914,7 +914,7 @@ def cli_action(user_action, key, screen_redraw, user_scroll, search_user):
         user_action = 0
         screen_redraw = 1
         user_scroll += 1
-    # action: scroll to user list end (0)
+    # action: scroll to user list start (0)
     elif user_action == 12:
         user_action = 0
         screen_redraw = 1
