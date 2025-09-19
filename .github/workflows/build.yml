@@ -49,9 +49,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - debian-release: buster
-            debian-version: 10
-            python-version: 3.7
           - debian-release: bullseye
             debian-version: 11
             python-version: 3.9
