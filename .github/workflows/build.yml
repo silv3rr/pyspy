@@ -46,7 +46,7 @@ jobs:
 
   ubuntu-container-build-job:
     name: Build for Ubuntu
-    runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
@@ -57,7 +57,7 @@ jobs:
           - ubuntu-release: noble_numbat
             ubuntu-version: 24.04
       fail-fast: false
-    container: ubuntu:${{ matrix.ubuntu-version }}           
+    container: ubuntu:${{ matrix.ubuntu-version }}
     steps:
       - uses: actions/checkout@v4
       - name: Run venv, pip, build and upload artifacts
